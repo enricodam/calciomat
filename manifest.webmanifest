@@ -1,0 +1,17 @@
+{
+  "name": "CalcioMat — Le tabelline in gol!",
+  "short_name": "CalcioMat",
+  "description": "Impara le tabelline dal 2 al 10 giocando a calcio: rispondi giusto, tieni palla e segna disegnando la traiettoria del tiro!",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1b2e",
+  "theme_color": "#0e1b2e",
+  "lang": "it",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
