@@ -111,10 +111,27 @@ body {
 .chip-hint { font-size: 0.75rem; opacity: 0.5; font-weight: 700; padding: 6px 2px; }
 
 /* pannelli risposta verbi */
-.qa-verb { display: flex; flex-direction: column; gap: 9px; }
+.qa-verb { display: flex; flex-direction: column; gap: 8px; }
 .chip-row { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
 .chip-row .chip { padding: 8px 12px; font-size: 0.78rem; }
 .chip-row.accents .chip { padding: 7px 13px; font-size: 1rem; background: #22313f; }
+
+/* le tre righe hanno colori diversi: modo viola, tempo azzurro, persona arancione */
+.row-label {
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  opacity: 0.55;
+  text-align: center;
+  margin-bottom: -4px;
+}
+.row-modo .chip { border-color: #ab6fd0; background: #291d3d; }
+.row-modo .chip.sel { background: #8e44ad; border-color: #d2b4de; }
+.row-tempo .chip { border-color: #38b6d8; background: #123243; }
+.row-tempo .chip.sel { background: #1f7fa0; border-color: #aed6f1; }
+.row-persona .chip { border-color: #f2a71b; background: #34260d; }
+.row-persona .chip.sel { background: #d68910; border-color: #fdebd0; }
 .input-row { display: flex; gap: 8px; }
 #va-input {
   flex: 1;
@@ -337,9 +354,17 @@ body {
 .key-ok { background: linear-gradient(180deg, #2ecc71, var(--green-dark)); }
 
 /* ============ scene passaggio e tiro ============ */
-#screen-pass, #screen-shot { padding: 0; }
-.scene-wrap { position: relative; flex: 1; display: flex; flex-direction: column; }
-.scene-wrap svg { width: 100%; height: 100%; display: block; touch-action: none; }
+#screen-pass, #screen-shot { padding: 0; overflow: hidden; }
+.scene-wrap { position: relative; flex: 1; min-height: 0; }
+/* la scena riempie SEMPRE esattamente lo schermo disponibile: mai scroll */
+.scene-wrap svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
 .scene-msg {
   position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%);
   background: rgba(14,27,46,0.88);
@@ -563,8 +588,24 @@ body {
   to { transform: translateY(320px) rotate(540deg); opacity: 0; }
 }
 
-/* schermi molto bassi: comprimi il campo */
-@media (max-height: 620px) {
-  .field-wrap { display: none; }
-  .commentary { min-height: 32px; }
+/* il campo si adatta all'altezza disponibile invece di sparire */
+#fieldSvg { aspect-ratio: 360 / 200; height: auto; width: min(100%, calc(30dvh * 1.8)); margin: 0 auto; }
+
+/* schermi bassi: tutto si stringe, niente scompare */
+@media (max-height: 720px) {
+  #fieldSvg { width: min(100%, calc(24dvh * 1.8)); }
+  .commentary { min-height: 28px; font-size: 0.84rem; }
+  .question-text { font-size: clamp(1.5rem, 7vw, 2.1rem); }
+  .key { padding: 8px 6px; font-size: 1.2rem; }
+  .scoreboard { padding-top: 5px; padding-bottom: 5px; }
+  .chip-row .chip { padding: 6px 10px; font-size: 0.72rem; }
+  #va-input { padding: 9px 12px; font-size: 1rem; }
+  .q-verb .q-line1 { font-size: 1.1rem; }
+  .q-verb .q-line2 { font-size: 0.82rem; }
+  .timer-bar-wrap { height: 9px; }
+}
+@media (max-height: 540px) {
+  #fieldSvg { width: min(100%, calc(18dvh * 1.8)); }
+  .key { padding: 5px 6px; font-size: 1.05rem; }
+  .question-text { font-size: 1.3rem; }
 }

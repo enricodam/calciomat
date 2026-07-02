@@ -33,10 +33,10 @@ const ROUNDS = [
 const QUESTIONS_PER_MATCH = 15;
 const MIN_PER_QUESTION = 6;
 
-// timer per turno (ms): comodo nei gironi, tosto in finale
-const TIMERS_TAB  = [22000, 20000, 18000, 16000, 14000, 12500, 11000, 10000, 9000];
-const TIMERS_VERB = [40000, 36000, 33000, 30000, 28000, 26000, 24000, 22000, 20000];
-const FRIENDLY_TIMER = { tab: 16000, verb: 30000 };
+// timer per turno (ms): comodo nei gironi, tosto in finale.
+// Il gioco dei verbi non ha timer: si scrive con calma.
+const TIMERS_TAB = [22000, 20000, 18000, 16000, 14000, 12500, 11000, 10000, 9000];
+const FRIENDLY_TIMER_TAB = 16000;
 
 /* ---------------- telecronaca ---------------- */
 const SAY = {
@@ -789,6 +789,9 @@ const match = {
 let timerHandle = null;
 
 function startTimer(ms, onTimeout) {
+  const wrap = $('timer-bar-wrap');
+  wrap.classList.toggle('hidden', !ms);
+  if (!ms) return; // niente timer (gioco dei verbi): tutto il tempo che serve
   const bar = $('timer-bar');
   bar.style.transition = 'none';
   bar.style.transform = 'scaleX(1)';
@@ -1041,7 +1044,7 @@ async function startMatch(game, teamIdx, friendly = false) {
 
   Object.assign(match, {
     active: true, game, teamIdx, friendly, focus, review,
-    timer: friendly ? FRIENDLY_TIMER[game] : (game === 'tab' ? TIMERS_TAB : TIMERS_VERB)[teamIdx],
+    timer: game === 'verb' ? 0 : (friendly ? FRIENDLY_TIMER_TAB : TIMERS_TAB[teamIdx]),
     oppGoalChance: 0.5 + teamIdx * 0.03,
     score: [0, 0], minute: 0, zone: 2, poss: 'you', quit: false,
   });
