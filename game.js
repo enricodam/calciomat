@@ -62,6 +62,7 @@ const say = (k) => SAY[k][Math.floor(Math.random() * SAY[k].length)];
 const PRONOUNS = ['io', 'tu', 'lui/lei', 'noi', 'voi', 'loro'];
 const PERSON_LABEL = ['1ª persona singolare', '2ª persona singolare', '3ª persona singolare',
                       '1ª persona plurale', '2ª persona plurale', '3ª persona plurale'];
+const PERSON_SHORT = ['1ª sing.', '2ª sing.', '3ª sing.', '1ª plur.', '2ª plur.', '3ª plur.'];
 
 const TEMPI = [
   { key: 'ind_presente',            modo: 'Indicativo',   tempo: 'Presente',            finite: true },
@@ -784,7 +785,30 @@ const match = {
   active: false, game: 'tab', teamIdx: 0, friendly: false,
   focus: [], review: [], timer: 15000, oppGoalChance: 0.55,
   score: [0, 0], minute: 0, zone: 2, poss: 'you', quit: false,
+  errors: [], reviewing: false,
 };
+
+/* carta soluzione: resta finché il giocatore non conferma di aver capito */
+function showSolution(html) {
+  return new Promise(resolve => {
+    $('solution-text').innerHTML = html;
+    const card = $('solution-card');
+    card.classList.remove('hidden');
+    Sfx.ohh();
+    $('solution-ok').onclick = () => {
+      Sfx.click();
+      card.classList.add('hidden');
+      $('solution-ok').onclick = null;
+      resolve();
+    };
+  });
+}
+
+function rememberError(err) {
+  if (match.reviewing) return;
+  const id = JSON.stringify(err);
+  if (!match.errors.some(e => JSON.stringify(e) === id)) match.errors.push(err);
+}
 
 let timerHandle = null;
 
@@ -832,9 +856,9 @@ function askQuestion() {
 /* --- tabelline: tastierino --- */
 let keyHandler = null;
 
-function askTabQuestion() {
+function askTabQuestion(preset) {
   return new Promise(resolve => {
-    const q = pickTabQuestion(match.focus, match.review);
+    const q = preset || pickTabQuestion(match.focus, match.review);
     const qt = $('question-text');
     qt.classList.remove('q-correct', 'q-wrong', 'q-verb');
     qt.innerHTML = `${q.a} × ${q.b} = <span id="typed" class="typed"></span>`;
@@ -857,13 +881,15 @@ function askTabQuestion() {
       if (correct) {
         qt.classList.add('q-correct');
         Sfx.correct();
+        resolve({ correct, timedOut });
       } else {
-        // momento chiave per imparare: mostra la risposta giusta, ben visibile
+        // momento chiave per imparare: soluzione ben chiara, si prosegue solo dopo averla letta
         qt.classList.add('q-wrong');
         qt.innerHTML = `${q.a} × ${q.b} = <span class="typed">${q.answer}</span>`;
         Sfx.wrong();
+        rememberError({ game: 'tab', a: q.a, b: q.b, answer: q.answer, key: q.key });
+        showSolution(`<b>${q.a} × ${q.b} = ${q.answer}</b>`).then(() => resolve({ correct, timedOut }));
       }
-      resolve({ correct, timedOut });
     };
 
     const press = (k) => {
@@ -901,9 +927,18 @@ function chipRow(container, labels, onPick) {
 }
 const selectChip = (chips, chosen) => chips.forEach(c => c.classList.toggle('sel', c === chosen));
 
-function askVerbQuestion() {
+/* ricostruisce una domanda-verbo identica da un errore salvato */
+function rebuildVerbQ(err) {
+  const verb = VERBS.find(v => v.inf === err.verbInf);
+  const tempo = TEMPO_BY_KEY[err.tempoKey];
+  const F = verbForms(verb, err.tempoKey);
+  const accepted = F.finite ? F.slots[err.persona] : F.single;
+  return { type: err.type, verb, tempoKey: err.tempoKey, tempo, persona: err.persona, accepted, display: accepted[0] };
+}
+
+function askVerbQuestion(preset) {
   return new Promise(resolve => {
-    const q = pickVerbQuestion(match.focus, match.review);
+    const q = preset ? rebuildVerbQ(preset) : pickVerbQuestion(match.focus, match.review);
     const qt = $('question-text');
     qt.classList.remove('q-correct', 'q-wrong');
     qt.classList.add('q-verb');
@@ -911,7 +946,7 @@ function askVerbQuestion() {
     const t0 = performance.now();
     let cleanupExtra = () => {};
 
-    const finish = (correct, timedOut, solutionHtml) => {
+    const finish = (correct, timedOut, solutionHtml, cardHtml) => {
       if (settled) return;
       settled = true;
       stopTimer();
@@ -920,12 +955,14 @@ function askVerbQuestion() {
       if (correct) {
         qt.classList.add('q-correct');
         Sfx.correct();
+        resolve({ correct, timedOut });
       } else {
         qt.classList.add('q-wrong');
         qt.innerHTML = solutionHtml; // la soluzione, ben visibile
         Sfx.wrong();
+        rememberError({ game: 'verb', type: q.type, verbInf: q.verb.inf, tempoKey: q.tempoKey, persona: q.persona });
+        showSolution(cardHtml).then(() => resolve({ correct, timedOut }));
       }
-      resolve({ correct, timedOut });
     };
 
     if (q.type === 'A') {
@@ -952,18 +989,20 @@ function askVerbQuestion() {
 
       const solution = `<div class="q-line1">${q.persona >= 0 ? PRONOUNS[q.persona] + ' ' : ''}<b class="typed">${q.display}</b></div>
                         <div class="q-line2">${q.tempo.modo} ${q.tempo.tempo.toLowerCase()} di ${q.verb.inf}</div>`;
+      const card = `${q.persona >= 0 ? PRONOUNS[q.persona] + ' ' : ''}<b>${q.display}</b>
+                    <small>${q.tempo.modo} ${q.tempo.tempo.toLowerCase()}${q.persona >= 0 ? ' · ' + PERSON_LABEL[q.persona] : ''} del verbo ${q.verb.inf.toUpperCase()}</small>`;
       const submit = () => {
         if (settled) return;
         const txt = input.value;
         if (!txt.trim()) return;
         const okPronoun = !needPronoun || pronoun === q.persona;
-        finish(okPronoun && matchForm(txt, q.accepted), false, solution);
+        finish(okPronoun && matchForm(txt, q.accepted), false, solution, card);
       };
       $('va-ok').onclick = submit;
       input.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
       cleanupExtra = () => { input.disabled = true; $('va-ok').onclick = null; input.onkeydown = null; };
 
-      startTimer(match.timer, () => finish(false, true, solution));
+      startTimer(match.timer, () => finish(false, true, solution, card));
     } else {
       /* prompt: la forma → scegli modo, tempo e persona */
       qt.innerHTML = `<div class="q-line1">«<b class="typed">${q.display}</b>»</div>
@@ -973,8 +1012,8 @@ function askVerbQuestion() {
       let modo = null, tempoKey = null, persona = -2;
 
       const tempoBox = $('vb-tempo');
-      const personaChips = chipRow($('vb-persona'), [...PRONOUNS, '—'], (lab, c) => {
-        persona = lab === '—' ? -1 : PRONOUNS.indexOf(lab);
+      const personaChips = chipRow($('vb-persona'), [...PERSON_SHORT, '—'], (lab, c) => {
+        persona = lab === '—' ? -1 : PERSON_SHORT.indexOf(lab);
         selectChip(personaChips, c);
       });
       const renderTempi = () => {
@@ -993,16 +1032,22 @@ function askVerbQuestion() {
 
       const best = combos[0];
       const bt = TEMPO_BY_KEY[best.key];
-      const solution = `<div class="q-line1"><b class="typed">${bt.modo} ${bt.tempo.toLowerCase()}</b>${best.persona >= 0 ? ' · ' + PRONOUNS[best.persona] : ''}</div>
+      const solution = `<div class="q-line1"><b class="typed">${bt.modo} ${bt.tempo.toLowerCase()}</b>${best.persona >= 0 ? ' · ' + PERSON_SHORT[best.persona] : ''}</div>
                         <div class="q-line2">«${q.display}» — ${q.verb.inf}</div>`;
+      const comboLine = (c) => {
+        const t = TEMPO_BY_KEY[c.key];
+        return `${t.modo} ${t.tempo.toLowerCase()}${c.persona >= 0 ? ' · ' + PERSON_LABEL[c.persona] : ''}`;
+      };
+      const card = `«<b>${q.display}</b>»
+                    <small>${combos.map(comboLine).join('<br>oppure: ')}<br>del verbo ${q.verb.inf.toUpperCase()}</small>`;
       $('vb-ok').onclick = () => {
         if (settled || !tempoKey || persona === -2) return;
         const ok = combos.some(c => c.key === tempoKey && c.persona === persona);
-        finish(ok, false, solution);
+        finish(ok, false, solution, card);
       };
       cleanupExtra = () => { $('vb-ok').onclick = null; };
 
-      startTimer(match.timer, () => finish(false, true, solution));
+      startTimer(match.timer, () => finish(false, true, solution, card));
     }
   });
 }
@@ -1047,6 +1092,7 @@ async function startMatch(game, teamIdx, friendly = false) {
     timer: game === 'verb' ? 0 : (friendly ? FRIENDLY_TIMER_TAB : TIMERS_TAB[teamIdx]),
     oppGoalChance: 0.5 + teamIdx * 0.03,
     score: [0, 0], minute: 0, zone: 2, poss: 'you', quit: false,
+    errors: [], reviewing: false,
   });
 
   $('sb-you-name').textContent = state.name || 'Tu';
@@ -1113,10 +1159,11 @@ async function startMatch(game, teamIdx, friendly = false) {
           await sleep(1300);
         }
       } else {
+        // la soluzione è già stata letta sulla carta: si riparte subito
         match.poss = 'opp';
         setPossession('opp');
         setComment(timedOut ? say('timeout') : say('wrongYou'));
-        await sleep(timedOut ? 1600 : 2600);
+        await sleep(1100);
       }
     } else { // palla all'avversario
       if (correct) {
@@ -1144,7 +1191,7 @@ async function startMatch(game, teamIdx, friendly = false) {
           await sleep(1700);
         } else {
           setComment(say('oppAdvance'));
-          await sleep(2600);
+          await sleep(1400);
         }
       }
     }
@@ -1258,8 +1305,60 @@ async function endMatch(team) {
   $('result-stars').innerHTML = match.friendly ? '' : `${roundSubject(game, i)}: ${stars}`;
   $('result-confetti').innerHTML = '';
   if (won) resultConfetti();
+  const rb = $('btn-result-review');
+  rb.classList.toggle('hidden', match.errors.length === 0);
+  rb.textContent = `📝 Ripeti gli errori (${match.errors.length})`;
   show('result');
   if (won) Sfx.trophy(); else Sfx.ohh();
+}
+
+/* ---------------- ripasso degli errori (fine livello) ---------------- */
+async function reviewErrors() {
+  const queue = match.errors.map(e => ({ err: e, tries: 0 }));
+  const total = queue.length;
+  match.reviewing = true;
+  match.quit = false;
+  match.timer = 0; // niente pressione: si impara
+  let doneCount = 0;
+
+  $('screen-match').classList.add('review');
+  $('sb-you-name').textContent = state.name || 'Tu';
+  $('sb-opp-name').textContent = 'Ripasso';
+  $('sb-opp-crest').textContent = '📝';
+  $('sb-score').textContent = `${doneCount}/${total}`;
+  $('sb-minute').textContent = '📖';
+  setComment('Rifai gli esercizi sbagliati: si impara così! 💪');
+  show('match');
+  await sleep(1200);
+
+  while (queue.length && !match.quit) {
+    const item = queue.shift();
+    $('sb-score').textContent = `${doneCount}/${total}`;
+    const { correct } = await (item.err.game === 'tab'
+      ? askTabQuestion(item.err)
+      : askVerbQuestion(item.err));
+    if (match.quit) break;
+    if (correct) {
+      doneCount++;
+      setComment(['Giusto! 💪', 'Ora la sai!', 'Perfetto, imparata!'][doneCount % 3]);
+    } else {
+      item.tries++;
+      if (item.tries < 3) queue.push(item); // riprova più tardi, la soluzione l'hai appena vista
+      else doneCount++;
+      setComment('La ritroverai tra poco: riprova!');
+    }
+    await sleep(900);
+  }
+
+  match.reviewing = false;
+  $('screen-match').classList.remove('review');
+  if (!match.quit) {
+    match.errors = [];
+    toast('Ripasso completato! 🎉');
+    Sfx.trophy();
+    $('btn-result-review').classList.add('hidden');
+  }
+  show('result');
 }
 
 /* ============================================================
@@ -1694,6 +1793,7 @@ function init() {
     if (ok) { match.quit = true; stopTimer(); }
   });
 
+  $('btn-result-review').addEventListener('click', () => { Sfx.click(); reviewErrors(); });
   $('btn-result-career').addEventListener('click', () => {
     Sfx.click();
     if (match.friendly) show('gamemenu');

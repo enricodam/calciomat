@@ -438,6 +438,36 @@ body {
 .oc-x { font-size: 1.6rem; font-weight: 900; color: var(--red); }
 .oc-sub { font-size: 0.92rem; opacity: 0.8; font-weight: 700; }
 
+/* carta soluzione: resta finché non tocchi "Ho capito" */
+.solution {
+  position: absolute; inset: 0;
+  background: rgba(5, 10, 18, 0.82);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 48;
+  padding: 20px;
+  animation: screenIn 0.25s;
+}
+.solution-box {
+  background: linear-gradient(180deg, #21395a, var(--navy2));
+  border: 2px solid var(--yellow);
+  border-radius: 22px;
+  padding: 24px 20px;
+  width: min(340px, 100%);
+  display: flex; flex-direction: column; gap: 16px;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.6);
+}
+.solution-label {
+  font-size: 0.72rem; font-weight: 900; letter-spacing: 3px;
+  color: var(--yellow); opacity: 0.9;
+}
+.solution-text { font-size: 1.15rem; font-weight: 700; line-height: 1.6; }
+.solution-text b { color: var(--yellow); font-size: 1.5rem; }
+.solution-text small { font-size: 0.88rem; opacity: 0.85; display: block; margin-top: 6px; font-weight: 600; }
+
+/* modalità ripasso: niente campo, si vede solo l'esercizio */
+#screen-match.review .field-wrap { display: none; }
+
 /* stacco "telecamera" */
 .flash {
   position: absolute; inset: 0;

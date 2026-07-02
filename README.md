@@ -12,7 +12,8 @@ Gioco web gratuito per imparare le **tabelline dal 2 al 10** e le **coniugazioni
 - **Verbi**: in un verso ti chiede ad es. "indicativo presente, 2ª persona singolare di DORMIRE" → scegli il pronome e scrivi "dormi"; nell'altro ti mostra «ha parlato» → indichi modo, tempo e persona. Le forme ambigue (es. "mangiamo": indicativo, congiuntivo o imperativo) accettano tutte le risposte valide. Niente timer: per coniugare c'è tutto il tempo che serve.
 - Risposta giusta = **disegni il passaggio** col dito: se la traiettoria passa vicino a un difensore viene **intercettata** — serve l'effetto!
 - Arrivato in area, **disegna la traiettoria del tiro**: tira negli angoli o dai l'effetto per ingannare il portiere.
-- Risposta sbagliata = palla all'avversario che avanza verso la tua porta: rispondi giusto per riconquistarla!
+- Risposta sbagliata = **carta della soluzione** ben chiara (si prosegue solo dopo averla letta) e palla all'avversario che avanza verso la tua porta: rispondi giusto per riconquistarla!
+- A fine partita, **"Ripeti gli errori"**: rifai senza timer proprio gli esercizi che hai sbagliato, finché non li impari.
 - Pareggio al 90'? **Calci di rigore!**
 - **Ripetizione intelligente**: le moltiplicazioni che sbagli di più ricompaiono più spesso.
 - **Salvataggio automatico** continuo + **codice alfanumerico** per portare i progressi su un altro dispositivo.
