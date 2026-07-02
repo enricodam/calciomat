@@ -1,13 +1,15 @@
-# ⚽ CalcioMat — Le tabelline in gol!
+# ⚽ CalcioMat — Tabelline e verbi in gol!
 
-Gioco web gratuito per imparare le **tabelline dal 2 al 10** a tema calcio. Un gioco FLM ✨
+Gioco web gratuito per imparare le **tabelline dal 2 al 10** e le **coniugazioni dei verbi italiani**, a tema calcio. Un gioco FLM ✨
 
 **Gioca subito:** https://enricodam.github.io/calciomat/
 
 ## Come si gioca
 
-- **Mondiale delle Tabelline**: fase a gironi (tabelline 2-5), poi sedicesimi, ottavi, quarti, semifinale e finale (tabellina del 10). Nove squadre inventate da battere per alzare la coppa!
-- **Rispondi col tastierino**: scrivi tu il risultato, cifra per cifra, prima che scada la barra del tempo (comoda nei gironi, spietata in finale).
+- **Due giochi, stesso campo**: ✖️ Tabelline e 📖 Verbi (tutte le coniugazioni attive regolari — modi e tempi semplici e composti — più essere e avere).
+- **Due modalità**: il **Mondiale** (fase a gironi, poi sedicesimi, ottavi, quarti, semifinale e finale) e l'**Amichevole**, dove scegli tu quali tabelline o quali tempi verbali allenare.
+- **Tabelline**: scrivi il risultato col tastierino, cifra per cifra, prima che scada la barra del tempo.
+- **Verbi**: in un verso ti chiede ad es. "indicativo presente, 2ª persona singolare di DORMIRE" → scegli il pronome e scrivi "dormi"; nell'altro ti mostra «ha parlato» → indichi modo, tempo e persona. Le forme ambigue (es. "mangiamo": indicativo, congiuntivo o imperativo) accettano tutte le risposte valide.
 - Risposta giusta = **disegni il passaggio** col dito: se la traiettoria passa vicino a un difensore viene **intercettata** — serve l'effetto!
 - Arrivato in area, **disegna la traiettoria del tiro**: tira negli angoli o dai l'effetto per ingannare il portiere.
 - Risposta sbagliata = palla all'avversario che avanza verso la tua porta: rispondi giusto per riconquistarla!

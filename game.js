@@ -1,7 +1,7 @@
 /* ============================================================
-   CalcioMat — le tabelline in gol!
-   Mondiale delle Tabelline: gironi → sedicesimi → ... → finale.
-   Gioco educativo libero, tutto originale.
+   CalcioMat — le tabelline (e i verbi!) in gol.
+   Due giochi con lo stesso gameplay calcistico:
+   ✖️ Tabelline (2-10) · 📖 Verbi (coniugazioni italiane attive)
    ============================================================ */
 'use strict';
 
@@ -33,11 +33,10 @@ const ROUNDS = [
 const QUESTIONS_PER_MATCH = 15;
 const MIN_PER_QUESTION = 6;
 
-// timer sempre attivo: comodo nei gironi, tosto in finale
-const TIMERS = [22000, 20000, 18000, 16000, 14000, 12500, 11000, 10000, 9000];
-function teamConfig(i) {
-  return { timer: TIMERS[i], oppGoalChance: 0.5 + i * 0.03 };
-}
+// timer per turno (ms): comodo nei gironi, tosto in finale
+const TIMERS_TAB  = [22000, 20000, 18000, 16000, 14000, 12500, 11000, 10000, 9000];
+const TIMERS_VERB = [40000, 36000, 33000, 30000, 28000, 26000, 24000, 22000, 20000];
+const FRIENDLY_TIMER = { tab: 16000, verb: 30000 };
 
 /* ---------------- telecronaca ---------------- */
 const SAY = {
@@ -57,17 +56,287 @@ const SAY = {
 };
 const say = (k) => SAY[k][Math.floor(Math.random() * SAY[k].length)];
 
+/* ============================================================
+   MOTORE DEI VERBI — coniugazioni attive regolari + essere/avere
+   ============================================================ */
+const PRONOUNS = ['io', 'tu', 'lui/lei', 'noi', 'voi', 'loro'];
+const PERSON_LABEL = ['1ª persona singolare', '2ª persona singolare', '3ª persona singolare',
+                      '1ª persona plurale', '2ª persona plurale', '3ª persona plurale'];
+
+const TEMPI = [
+  { key: 'ind_presente',            modo: 'Indicativo',   tempo: 'Presente',            finite: true },
+  { key: 'ind_imperfetto',          modo: 'Indicativo',   tempo: 'Imperfetto',          finite: true },
+  { key: 'ind_passato_prossimo',    modo: 'Indicativo',   tempo: 'Passato prossimo',    finite: true, compound: 'ind_presente' },
+  { key: 'ind_passato_remoto',      modo: 'Indicativo',   tempo: 'Passato remoto',      finite: true },
+  { key: 'ind_trapassato_prossimo', modo: 'Indicativo',   tempo: 'Trapassato prossimo', finite: true, compound: 'ind_imperfetto' },
+  { key: 'ind_trapassato_remoto',   modo: 'Indicativo',   tempo: 'Trapassato remoto',   finite: true, compound: 'ind_passato_remoto' },
+  { key: 'ind_futuro',              modo: 'Indicativo',   tempo: 'Futuro semplice',     finite: true },
+  { key: 'ind_futuro_anteriore',    modo: 'Indicativo',   tempo: 'Futuro anteriore',    finite: true, compound: 'ind_futuro' },
+  { key: 'cong_presente',           modo: 'Congiuntivo',  tempo: 'Presente',            finite: true },
+  { key: 'cong_passato',            modo: 'Congiuntivo',  tempo: 'Passato',             finite: true, compound: 'cong_presente' },
+  { key: 'cong_imperfetto',         modo: 'Congiuntivo',  tempo: 'Imperfetto',          finite: true },
+  { key: 'cong_trapassato',         modo: 'Congiuntivo',  tempo: 'Trapassato',          finite: true, compound: 'cong_imperfetto' },
+  { key: 'cond_presente',           modo: 'Condizionale', tempo: 'Presente',            finite: true },
+  { key: 'cond_passato',            modo: 'Condizionale', tempo: 'Passato',             finite: true, compound: 'cond_presente' },
+  { key: 'imp_presente',            modo: 'Imperativo',   tempo: 'Presente',            finite: true },
+  { key: 'inf_presente',            modo: 'Infinito',     tempo: 'Presente' },
+  { key: 'inf_passato',             modo: 'Infinito',     tempo: 'Passato' },
+  { key: 'part_presente',           modo: 'Participio',   tempo: 'Presente' },
+  { key: 'part_passato',            modo: 'Participio',   tempo: 'Passato' },
+  { key: 'ger_presente',            modo: 'Gerundio',     tempo: 'Presente' },
+  { key: 'ger_passato',             modo: 'Gerundio',     tempo: 'Passato' },
+];
+const TEMPO_BY_KEY = Object.fromEntries(TEMPI.map(t => [t.key, t]));
+const MODI = ['Indicativo', 'Congiuntivo', 'Condizionale', 'Imperativo', 'Infinito', 'Participio', 'Gerundio'];
+
+const VERBS = [
+  { inf: 'mangiare', cls: 'are', aux: 'avere' },
+  { inf: 'giocare',  cls: 'are', aux: 'avere' },
+  { inf: 'parlare',  cls: 'are', aux: 'avere' },
+  { inf: 'cantare',  cls: 'are', aux: 'avere' },
+  { inf: 'studiare', cls: 'are', aux: 'avere' },
+  { inf: 'pagare',   cls: 'are', aux: 'avere' },
+  { inf: 'lavare',   cls: 'are', aux: 'avere' },
+  { inf: 'arrivare', cls: 'are', aux: 'essere' },
+  { inf: 'entrare',  cls: 'are', aux: 'essere' },
+  { inf: 'tornare',  cls: 'are', aux: 'essere' },
+  { inf: 'credere',  cls: 'ere', aux: 'avere' },
+  { inf: 'vendere',  cls: 'ere', aux: 'avere' },
+  { inf: 'ripetere', cls: 'ere', aux: 'avere' },
+  { inf: 'temere',   cls: 'ere', aux: 'avere' },
+  { inf: 'battere',  cls: 'ere', aux: 'avere' },
+  { inf: 'dormire',  cls: 'ire', aux: 'avere' },
+  { inf: 'sentire',  cls: 'ire', aux: 'avere' },
+  { inf: 'seguire',  cls: 'ire', aux: 'avere' },
+  { inf: 'partire',  cls: 'ire', aux: 'essere' },
+  { inf: 'finire',   cls: 'ire_isc', aux: 'avere' },
+  { inf: 'capire',   cls: 'ire_isc', aux: 'avere' },
+  { inf: 'pulire',   cls: 'ire_isc', aux: 'avere' },
+  { inf: 'spedire',  cls: 'ire_isc', aux: 'avere' },
+  { inf: 'essere',   cls: 'essere', aux: 'essere' },
+  { inf: 'avere',    cls: 'avere',  aux: 'avere' },
+];
+
+const IRR = {
+  essere: {
+    ind_presente: ['sono', 'sei', 'è', 'siamo', 'siete', 'sono'],
+    ind_imperfetto: ['ero', 'eri', 'era', 'eravamo', 'eravate', 'erano'],
+    ind_passato_remoto: ['fui', 'fosti', 'fu', 'fummo', 'foste', 'furono'],
+    ind_futuro: ['sarò', 'sarai', 'sarà', 'saremo', 'sarete', 'saranno'],
+    cong_presente: ['sia', 'sia', 'sia', 'siamo', 'siate', 'siano'],
+    cong_imperfetto: ['fossi', 'fossi', 'fosse', 'fossimo', 'foste', 'fossero'],
+    cond_presente: ['sarei', 'saresti', 'sarebbe', 'saremmo', 'sareste', 'sarebbero'],
+    imp_presente: [null, 'sii', null, 'siamo', 'siate', null],
+    part_presente: null,
+    part_passato: 'stato',
+    ger_presente: 'essendo',
+    inf_presente: 'essere',
+  },
+  avere: {
+    ind_presente: ['ho', 'hai', 'ha', 'abbiamo', 'avete', 'hanno'],
+    ind_imperfetto: ['avevo', 'avevi', 'aveva', 'avevamo', 'avevate', 'avevano'],
+    ind_passato_remoto: ['ebbi', 'avesti', 'ebbe', 'avemmo', 'aveste', 'ebbero'],
+    ind_futuro: ['avrò', 'avrai', 'avrà', 'avremo', 'avrete', 'avranno'],
+    cong_presente: ['abbia', 'abbia', 'abbia', 'abbiamo', 'abbiate', 'abbiano'],
+    cong_imperfetto: ['avessi', 'avessi', 'avesse', 'avessimo', 'aveste', 'avessero'],
+    cond_presente: ['avrei', 'avresti', 'avrebbe', 'avremmo', 'avreste', 'avrebbero'],
+    imp_presente: [null, 'abbi', null, 'abbiamo', 'abbiate', null],
+    part_presente: 'avente',
+    part_passato: 'avuto',
+    ger_presente: 'avendo',
+    inf_presente: 'avere',
+  },
+};
+
+/* attacca la desinenza a una radice in -are rispettando l'ortografia:
+   gioc+i → giochi · mangi+iamo → mangiamo · studi+i → studi */
+function joinAre(root, ending) {
+  if (/[cg]$/.test(root) && /^[ei]/.test(ending)) return root + 'h' + ending;
+  if (/i$/.test(root) && /^i/.test(ending)) return root.slice(0, -1) + ending;
+  return root + ending;
+}
+
+function futStem(verb) {
+  const root = verb.inf.slice(0, -3);
+  if (verb.cls === 'are') {
+    if (/[cg]$/.test(root)) return root + 'her';
+    if (/[cg]i$/.test(root)) return root.slice(0, -1) + 'er';
+    return root + 'er';
+  }
+  if (verb.cls === 'ere') return root + 'er';
+  return root + 'ir'; // ire, ire_isc
+}
+
+const FUT_END = ['ò', 'ai', 'à', 'emo', 'ete', 'anno'];
+const COND_END = ['ei', 'esti', 'ebbe', 'emmo', 'este', 'ebbero'];
+
+const ENDINGS = {
+  are: {
+    ind_presente: ['o', 'i', 'a', 'iamo', 'ate', 'ano'],
+    ind_imperfetto: ['avo', 'avi', 'ava', 'avamo', 'avate', 'avano'],
+    ind_passato_remoto: ['ai', 'asti', 'ò', 'ammo', 'aste', 'arono'],
+    cong_presente: ['i', 'i', 'i', 'iamo', 'iate', 'ino'],
+    cong_imperfetto: ['assi', 'assi', 'asse', 'assimo', 'aste', 'assero'],
+    imp_presente: [null, 'a', null, 'iamo', 'ate', null],
+    part_presente: 'ante', part_passato: 'ato', ger_presente: 'ando',
+  },
+  ere: {
+    ind_presente: ['o', 'i', 'e', 'iamo', 'ete', 'ono'],
+    ind_imperfetto: ['evo', 'evi', 'eva', 'evamo', 'evate', 'evano'],
+    ind_passato_remoto: [['etti', 'ei'], ['esti'], ['ette', 'è'], ['emmo'], ['este'], ['ettero', 'erono']],
+    cong_presente: ['a', 'a', 'a', 'iamo', 'iate', 'ano'],
+    cong_imperfetto: ['essi', 'essi', 'esse', 'essimo', 'este', 'essero'],
+    imp_presente: [null, 'i', null, 'iamo', 'ete', null],
+    part_presente: 'ente', part_passato: 'uto', ger_presente: 'endo',
+  },
+  ire: {
+    ind_presente: ['o', 'i', 'e', 'iamo', 'ite', 'ono'],
+    ind_imperfetto: ['ivo', 'ivi', 'iva', 'ivamo', 'ivate', 'ivano'],
+    ind_passato_remoto: ['ii', 'isti', 'ì', 'immo', 'iste', 'irono'],
+    cong_presente: ['a', 'a', 'a', 'iamo', 'iate', 'ano'],
+    cong_imperfetto: ['issi', 'issi', 'isse', 'issimo', 'iste', 'issero'],
+    imp_presente: [null, 'i', null, 'iamo', 'ite', null],
+    part_presente: null, part_passato: 'ito', ger_presente: 'endo',
+  },
+  ire_isc: {
+    ind_presente: ['isco', 'isci', 'isce', 'iamo', 'ite', 'iscono'],
+    ind_imperfetto: ['ivo', 'ivi', 'iva', 'ivamo', 'ivate', 'ivano'],
+    ind_passato_remoto: ['ii', 'isti', 'ì', 'immo', 'iste', 'irono'],
+    cong_presente: ['isca', 'isca', 'isca', 'iamo', 'iate', 'iscano'],
+    cong_imperfetto: ['issi', 'issi', 'isse', 'issimo', 'iste', 'issero'],
+    imp_presente: [null, 'isci', null, 'iamo', 'ite', null],
+    part_presente: null, part_passato: 'ito', ger_presente: 'endo',
+  },
+};
+
+const toArr = (v) => v == null ? null : Array.isArray(v) ? v : [v];
+
+/* forme semplici: array di 6 slot (ognuno array di varianti accettate) o
+   { single: [...] } per le forme non finite; null se il tempo non esiste per quel verbo */
+function simpleForms(verb, key) {
+  const tempo = TEMPO_BY_KEY[key];
+  const irr = IRR[verb.cls];
+
+  if (key === 'inf_presente') return { single: [verb.inf] };
+  if (key === 'ind_futuro') {
+    if (irr) return irr.ind_futuro.map(toArr);
+    return FUT_END.map(e => [futStem(verb) + e]);
+  }
+  if (key === 'cond_presente') {
+    if (irr) return irr.cond_presente.map(toArr);
+    return COND_END.map(e => [futStem(verb) + e]);
+  }
+
+  if (irr) {
+    const v = irr[key];
+    if (v == null) return null;
+    if (tempo.finite) return v.map(toArr);
+    return { single: toArr(v) };
+  }
+
+  const table = ENDINGS[verb.cls];
+  const root = verb.inf.slice(0, -3);
+  const join = verb.cls === 'are' ? (e) => joinAre(root, e) : (e) => root + e;
+  const v = table[key];
+  if (v == null) return null;
+  if (tempo.finite) {
+    return v.map(slot => slot == null ? null : toArr(slot).map(join));
+  }
+  return { single: toArr(v).map(join) };
+}
+
+/* participio passato accordato: singolare → -o/-a, plurale → -i/-e */
+function agreePP(pp, personIdx) {
+  const base = pp.slice(0, -1);
+  return personIdx <= 2 ? [base + 'o', base + 'a'] : [base + 'i', base + 'e'];
+}
+
+/* tutte le forme (semplici e composte) per verbo+tempo.
+   Ritorna { finite, slots } o { finite:false, single } — array di varianti accettate. */
+function verbForms(verb, key) {
+  const tempo = TEMPO_BY_KEY[key];
+  const auxVerb = VERBS.find(v => v.inf === verb.aux);
+  const pp = simpleForms(verb, 'part_passato').single[0];
+  const ppFor = (i) => verb.aux === 'essere' ? agreePP(pp, i) : [pp];
+
+  if (tempo.compound) {
+    const auxSlots = simpleForms(auxVerb, tempo.compound);
+    if (!auxSlots) return null;
+    return {
+      finite: true,
+      slots: auxSlots.map((slot, i) => slot == null ? null :
+        slot.flatMap(a => ppFor(i).map(p => a + ' ' + p))),
+    };
+  }
+  if (key === 'inf_passato') {
+    return { finite: false, single: (verb.aux === 'essere' ? ['essere'] : ['avere']).flatMap(a => (verb.aux === 'essere' ? [pp.slice(0, -1) + 'o', pp.slice(0, -1) + 'a', pp.slice(0, -1) + 'i', pp.slice(0, -1) + 'e'] : [pp]).map(p => a + ' ' + p)) };
+  }
+  if (key === 'ger_passato') {
+    const aux = verb.aux === 'essere' ? 'essendo' : 'avendo';
+    return { finite: false, single: (verb.aux === 'essere' ? [pp.slice(0, -1) + 'o', pp.slice(0, -1) + 'a', pp.slice(0, -1) + 'i', pp.slice(0, -1) + 'e'] : [pp]).map(p => aux + ' ' + p) };
+  }
+  const s = simpleForms(verb, key);
+  if (s == null) return null;
+  if (tempo.finite) return { finite: true, slots: s };
+  return { finite: false, single: s.single };
+}
+
+/* normalizza la risposta scritta: minuscole, spazi, e' → è, é ≡ è */
+function normVerb(s) {
+  return s.toLowerCase().trim().replace(/\s+/g, ' ')
+    .replace(/([aeiou])['’`]/g, (m, v) => ({ a: 'à', e: 'è', i: 'ì', o: 'ò', u: 'ù' }[v]))
+    .replace(/é/g, 'è');
+}
+const matchForm = (input, accepted) => accepted.some(a => normVerb(a) === normVerb(input));
+
+/* tutte le combinazioni (tempo, persona) che generano esattamente questa forma */
+function acceptedCombos(verb, form) {
+  const combos = [];
+  for (const t of TEMPI) {
+    const F = verbForms(verb, t.key);
+    if (!F) continue;
+    if (F.finite) {
+      F.slots.forEach((slot, i) => {
+        if (slot && matchForm(form, slot)) combos.push({ key: t.key, persona: i });
+      });
+    } else if (matchForm(form, F.single)) {
+      combos.push({ key: t.key, persona: -1 });
+    }
+  }
+  return combos;
+}
+
+/* gruppi di tempi: turni del Mondiale dei Verbi e scelte dell'amichevole */
+const VERB_GROUPS = [
+  { name: 'Indicativo presente', keys: ['ind_presente'] },
+  { name: 'Imperfetto', keys: ['ind_imperfetto'] },
+  { name: 'Futuro semplice', keys: ['ind_futuro'] },
+  { name: 'Passato prossimo', keys: ['ind_passato_prossimo'] },
+  { name: 'Passato remoto', keys: ['ind_passato_remoto'] },
+  { name: 'Tempi composti avanzati', keys: ['ind_trapassato_prossimo', 'ind_trapassato_remoto', 'ind_futuro_anteriore'] },
+  { name: 'Congiuntivo', keys: ['cong_presente', 'cong_passato', 'cong_imperfetto', 'cong_trapassato'] },
+  { name: 'Condizionale e imperativo', keys: ['cond_presente', 'cond_passato', 'imp_presente'] },
+  { name: 'Forme non finite + tutto', keys: ['inf_presente', 'inf_passato', 'part_presente', 'part_passato', 'ger_presente', 'ger_passato'] },
+];
+
 /* ---------------- stato e salvataggio ---------------- */
 const SAVE_KEY = 'calciomat_save_v1';
 
+function freshCareer() { return { unlocked: 1, beaten: [false, false, false, false, false, false, false, false, false, false] }; }
+
 function freshState() {
-  const facts = {};
-  for (let t = 2; t <= 10; t++) for (let n = 1; n <= 10; n++) facts[`${t}x${n}`] = 0;
+  const tabFacts = {};
+  for (let t = 2; t <= 10; t++) for (let n = 1; n <= 10; n++) tabFacts[`${t}x${n}`] = 0;
+  const verbFacts = {};
+  TEMPI.forEach(t => { verbFacts[t.key] = 0; });
   return {
-    v: 1, name: '', sound: true,
-    career: { unlocked: 1, beaten: [false, false, false, false, false, false, false, false, false, false] },
-    facts,
+    v: 2, name: '', sound: true,
     stats: { goals: 0, matches: 0, wins: 0, correct: 0, wrong: 0 },
+    games: {
+      tab: { career: freshCareer(), facts: tabFacts },
+      verb: { career: freshCareer(), facts: verbFacts },
+    },
+    sel: { tab: [2, 3, 4, 5, 6, 7, 8, 9, 10], verb: [0] },
   };
 }
 let state = freshState();
@@ -80,7 +349,17 @@ function loadLocal() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return false;
     const s = JSON.parse(raw);
-    if (s && s.v === 1 && s.facts && s.career) { state = Object.assign(freshState(), s); return true; }
+    if (s && s.v === 2 && s.games) { state = Object.assign(freshState(), s); return true; }
+    if (s && s.v === 1 && s.facts && s.career) {
+      // migrazione dal vecchio salvataggio (solo tabelline)
+      const f = freshState();
+      f.name = s.name; f.sound = s.sound; f.stats = Object.assign(f.stats, s.stats);
+      f.games.tab.career = Object.assign(freshCareer(), s.career);
+      f.games.tab.facts = Object.assign(f.games.tab.facts, s.facts);
+      state = f;
+      saveLocal();
+      return true;
+    }
   } catch (e) { /* ignora */ }
   return false;
 }
@@ -119,24 +398,31 @@ class BitReader {
   }
 }
 
+function checksum(body) {
+  let sum = 0;
+  for (const ch of body) sum = (sum + B32.indexOf(ch) * 7 + 3) % 1024;
+  return B32[sum >> 5] + B32[sum & 31];
+}
+
 function encodeCode() {
   const w = new BitWriter();
-  w.w(1, 4); // versione
-  w.w(state.career.unlocked, 4);
-  for (let i = 0; i < 10; i++) w.w(state.career.beaten[i] ? 1 : 0, 1);
+  w.w(2, 4); // versione
+  const name = state.name.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 12);
+  w.w(name.length, 4);
+  for (const ch of name) w.w(ch.charCodeAt(0) - 65, 5);
   w.w(Math.min(state.stats.goals, 4095), 12);
   w.w(Math.min(state.stats.matches, 1023), 10);
   w.w(Math.min(state.stats.wins, 1023), 10);
   w.w(Math.min(state.stats.correct, 16383), 14);
   w.w(Math.min(state.stats.wrong, 16383), 14);
-  const name = state.name.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 12);
-  w.w(name.length, 4);
-  for (const ch of name) w.w(ch.charCodeAt(0) - 65, 5);
-  for (let t = 2; t <= 10; t++) for (let n = 1; n <= 10; n++) w.w(state.facts[`${t}x${n}`] & 7, 3);
+  for (const g of ['tab', 'verb']) {
+    w.w(state.games[g].career.unlocked, 4);
+    for (let i = 0; i < 10; i++) w.w(state.games[g].career.beaten[i] ? 1 : 0, 1);
+  }
+  for (let t = 2; t <= 10; t++) for (let n = 1; n <= 10; n++) w.w(state.games.tab.facts[`${t}x${n}`] & 7, 3);
+  TEMPI.forEach(t => w.w(state.games.verb.facts[t.key] & 7, 3));
   let body = w.toB32();
-  let sum = 0;
-  for (const ch of body) sum = (sum + B32.indexOf(ch) * 7 + 3) % 1024;
-  body += B32[sum >> 5] + B32[sum & 31];
+  body += checksum(body);
   return 'CM1' + body.replace(/(.{4})/g, '-$1');
 }
 
@@ -145,73 +431,118 @@ function decodeCode(str) {
   if (!clean.startsWith('CM1')) return null;
   const body = clean.slice(3);
   if (body.length < 10) return null;
-  const data = body.slice(0, -2), check = body.slice(-2);
-  let sum = 0;
-  for (const ch of data) sum = (sum + B32.indexOf(ch) * 7 + 3) % 1024;
-  if (B32[sum >> 5] + B32[sum & 31] !== check) return null;
+  const data = body.slice(0, -2);
+  if (checksum(data) !== body.slice(-2)) return null;
   try {
     const r = new BitReader(data);
-    if (r.r(4) !== 1) return null;
+    const ver = r.r(4);
     const s = freshState();
-    s.career.unlocked = Math.min(Math.max(r.r(4), 1), 9);
-    for (let i = 0; i < 10; i++) s.career.beaten[i] = !!r.r(1);
-    s.stats.goals = r.r(12); s.stats.matches = r.r(10); s.stats.wins = r.r(10);
-    s.stats.correct = r.r(14); s.stats.wrong = r.r(14);
+    if (ver === 1) {
+      // vecchi codici: solo tabelline
+      s.games.tab.career.unlocked = Math.min(Math.max(r.r(4), 1), 9);
+      for (let i = 0; i < 10; i++) s.games.tab.career.beaten[i] = !!r.r(1);
+      s.stats.goals = r.r(12); s.stats.matches = r.r(10); s.stats.wins = r.r(10);
+      s.stats.correct = r.r(14); s.stats.wrong = r.r(14);
+      const len = r.r(4);
+      let name = '';
+      for (let i = 0; i < len; i++) name += String.fromCharCode(65 + r.r(5));
+      s.name = name ? name.charAt(0) + name.slice(1).toLowerCase() : '';
+      for (let t = 2; t <= 10; t++) for (let n = 1; n <= 10; n++) s.games.tab.facts[`${t}x${n}`] = Math.min(r.r(3), 5);
+      return s;
+    }
+    if (ver !== 2) return null;
     const len = r.r(4);
     let name = '';
     for (let i = 0; i < len; i++) name += String.fromCharCode(65 + r.r(5));
     s.name = name ? name.charAt(0) + name.slice(1).toLowerCase() : '';
-    for (let t = 2; t <= 10; t++) for (let n = 1; n <= 10; n++) s.facts[`${t}x${n}`] = Math.min(r.r(3), 5);
+    s.stats.goals = r.r(12); s.stats.matches = r.r(10); s.stats.wins = r.r(10);
+    s.stats.correct = r.r(14); s.stats.wrong = r.r(14);
+    for (const g of ['tab', 'verb']) {
+      s.games[g].career.unlocked = Math.min(Math.max(r.r(4), 1), 9);
+      for (let i = 0; i < 10; i++) s.games[g].career.beaten[i] = !!r.r(1);
+    }
+    for (let t = 2; t <= 10; t++) for (let n = 1; n <= 10; n++) s.games.tab.facts[`${t}x${n}`] = Math.min(r.r(3), 5);
+    TEMPI.forEach(t => { s.games.verb.facts[t.key] = Math.min(r.r(3), 5); });
     return s;
   } catch (e) { return null; }
 }
 
-/* ---------------- motore delle domande (ripetizione intelligente) ---------------- */
+/* ---------------- domande TABELLINE ---------------- */
 let lastFactKey = '';
 
-function pickQuestion(focusTable) {
-  const unlockedTables = [];
-  for (let i = 0; i < Math.min(state.career.unlocked, 9); i++) unlockedTables.push(TEAMS[i].table);
-  const useReview = unlockedTables.length > 1 && Math.random() < 0.3;
-  const tables = useReview ? unlockedTables.filter(t => t !== focusTable) : [focusTable];
+function weightedPick(pool) {
+  const total = pool.reduce((s, p) => s + p.weight, 0);
+  let roll = Math.random() * total;
+  for (const p of pool) { roll -= p.weight; if (roll <= 0) return p; }
+  return pool[0];
+}
+
+function pickTabQuestion(focusTables, reviewTables) {
+  const useReview = reviewTables.length && Math.random() < 0.3;
+  const tables = useReview ? reviewTables : focusTables;
   const pool = [];
   for (const t of tables) {
     for (let n = 1; n <= 10; n++) {
       const key = `${t}x${n}`;
       if (key === lastFactKey) continue;
-      const lvl = state.facts[key];
+      const lvl = state.games.tab.facts[key];
       pool.push({ t, n, key, weight: Math.pow(6 - lvl, 2) }); // sbagli spesso → esce più spesso
     }
   }
-  let total = pool.reduce((s, p) => s + p.weight, 0);
-  let roll = Math.random() * total;
-  let pick = pool[0];
-  for (const p of pool) { roll -= p.weight; if (roll <= 0) { pick = p; break; } }
+  const pick = weightedPick(pool);
   lastFactKey = pick.key;
   const flip = Math.random() < 0.5;
-  return {
-    a: flip ? pick.n : pick.t,
-    b: flip ? pick.t : pick.n,
-    answer: pick.t * pick.n,
-    key: pick.key,
-  };
+  return { a: flip ? pick.n : pick.t, b: flip ? pick.t : pick.n, answer: pick.t * pick.n, key: pick.key };
 }
 
-function updateFact(key, correct, fast) {
-  const lvl = state.facts[key] ?? 0;
-  if (correct) state.facts[key] = Math.min(5, lvl + (fast ? 2 : 1));
-  else state.facts[key] = Math.max(0, lvl - 2);
+/* ---------------- domande VERBI ---------------- */
+function verbHasTempo(verb, key) {
+  return verbForms(verb, key) != null;
+}
+
+function pickVerbQuestion(focusKeys, reviewKeys) {
+  const useReview = reviewKeys.length && Math.random() < 0.25;
+  const keys = useReview ? reviewKeys : focusKeys;
+  const pool = keys.map(k => ({ key: k, weight: Math.pow(6 - state.games.verb.facts[k], 2) }));
+  const tempoKey = weightedPick(pool).key;
+  const tempo = TEMPO_BY_KEY[tempoKey];
+  let verb;
+  do { verb = VERBS[Math.floor(Math.random() * VERBS.length)]; } while (!verbHasTempo(verb, tempoKey));
+  const F = verbForms(verb, tempoKey);
+  let persona = -1;
+  if (F.finite) {
+    const valid = F.slots.map((s, i) => s ? i : -1).filter(i => i >= 0);
+    persona = valid[Math.floor(Math.random() * valid.length)];
+  }
+  let type = Math.random() < 0.5 ? 'A' : 'B';
+  if (tempoKey === 'inf_presente') type = 'B'; // "scrivi l'infinito di mangiare" sarebbe troppo facile
+  const accepted = F.finite ? F.slots[persona] : F.single;
+  return { type, verb, tempoKey, tempo, persona, accepted, display: accepted[0] };
+}
+
+/* aggiorna la memoria di gioco (ripetizione intelligente) */
+function updateFact(game, key, correct, fast) {
+  const facts = state.games[game].facts;
+  const lvl = facts[key] ?? 0;
+  if (correct) facts[key] = Math.min(5, lvl + (fast ? 2 : 1));
+  else facts[key] = Math.max(0, lvl - 2);
   if (correct) state.stats.correct++; else state.stats.wrong++;
   saveLocal();
 }
 
 function tableStars(t) {
   let sum = 0;
-  for (let n = 1; n <= 10; n++) sum += state.facts[`${t}x${n}`];
-  const avg = sum / 10;
-  return avg >= 4.5 ? 3 : avg >= 3 ? 2 : avg >= 1.5 ? 1 : 0;
+  for (let n = 1; n <= 10; n++) sum += state.games.tab.facts[`${t}x${n}`];
+  return starsFromAvg(sum / 10);
 }
+function groupStars(gi) {
+  const keys = VERB_GROUPS[gi].keys;
+  const sum = keys.reduce((s, k) => s + state.games.verb.facts[k], 0);
+  return starsFromAvg(sum / keys.length);
+}
+const starsFromAvg = (avg) => avg >= 4.5 ? 3 : avg >= 3 ? 2 : avg >= 1.5 ? 1 : 0;
 const starStr = (s) => '⭐'.repeat(s) + '☆'.repeat(3 - s);
+const roundSubject = (game, i) => game === 'tab' ? `Tabellina del ${TEAMS[i].table}` : VERB_GROUPS[i].name;
 
 /* ---------------- utilità UI ---------------- */
 const $ = (id) => document.getElementById(id);
@@ -274,24 +605,65 @@ function modal({ title, text, input = false, okText = 'OK', cancel = true, place
 function drawPlayer(parent, x, y, jersey, scale = 1, skin = '#ffd9b0') {
   const g = el('g', { transform: `translate(${x},${y}) scale(${scale})` }, parent);
   el('ellipse', { cx: 0, cy: 46, rx: 20, ry: 6, fill: '#000', opacity: 0.2 }, g);
-  el('rect', { x: -16, y: 30, width: 12, height: 16, rx: 5, fill: '#12233d' }, g); // gambe
+  el('rect', { x: -16, y: 30, width: 12, height: 16, rx: 5, fill: '#12233d' }, g);
   el('rect', { x: 4, y: 30, width: 12, height: 16, rx: 5, fill: '#12233d' }, g);
-  el('rect', { x: -14, y: 2, width: 28, height: 32, rx: 9, fill: jersey }, g); // maglia
-  el('rect', { x: -22, y: 4, width: 9, height: 20, rx: 4.5, fill: jersey }, g); // braccia
+  el('rect', { x: -14, y: 2, width: 28, height: 32, rx: 9, fill: jersey }, g);
+  el('rect', { x: -22, y: 4, width: 9, height: 20, rx: 4.5, fill: jersey }, g);
   el('rect', { x: 13, y: 4, width: 9, height: 20, rx: 4.5, fill: jersey }, g);
-  el('circle', { cx: 0, cy: -8, r: 11, fill: skin }, g); // testa
-  el('path', { d: 'M -11 -11 A 11 11 0 0 1 11 -11 L 11 -14 A 11 11 0 0 0 -11 -14 Z', fill: '#4a2d12' }, g); // capelli
+  el('circle', { cx: 0, cy: -8, r: 11, fill: skin }, g);
+  el('path', { d: 'M -11 -11 A 11 11 0 0 1 11 -11 L 11 -14 A 11 11 0 0 0 -11 -14 Z', fill: '#4a2d12' }, g);
   return g;
+}
+
+/* ---------------- menu gioco e amichevole ---------------- */
+let currentGame = 'tab'; // 'tab' | 'verb'
+
+const GAME_META = {
+  tab:  { title: '✖️ Tabelline', career: '🏆 Mondiale delle Tabelline', friendlyHint: 'Partita libera: scegli tu quali tabelline allenare.', selHint: 'Quali tabelline vuoi allenare?' },
+  verb: { title: '📖 Verbi', career: '🏆 Mondiale dei Verbi', friendlyHint: 'Partita libera: scegli tu quali tempi verbali allenare.', selHint: 'Quali tempi verbali vuoi allenare?' },
+};
+
+function openGameMenu(game) {
+  currentGame = game;
+  $('gm-title').textContent = GAME_META[game].title;
+  $('gm-friendly-hint').textContent = GAME_META[game].friendlyHint;
+  show('gamemenu');
+}
+
+function renderFriendly() {
+  $('friendly-hint').textContent = GAME_META[currentGame].selHint;
+  const box = $('sel-chips');
+  box.innerHTML = '';
+  const items = currentGame === 'tab'
+    ? [2, 3, 4, 5, 6, 7, 8, 9, 10].map(t => ({ id: t, label: `Tabellina del ${t}` }))
+    : VERB_GROUPS.map((g, i) => ({ id: i, label: g.name }));
+  items.forEach(item => {
+    const c = document.createElement('button');
+    c.className = 'chip' + (state.sel[currentGame].includes(item.id) ? ' sel' : '');
+    c.textContent = item.label;
+    c.addEventListener('click', () => {
+      Sfx.click();
+      const sel = state.sel[currentGame];
+      const i = sel.indexOf(item.id);
+      if (i >= 0) { if (sel.length > 1) sel.splice(i, 1); } // almeno una selezionata
+      else sel.push(item.id);
+      saveLocal();
+      c.classList.toggle('sel', sel.includes(item.id));
+    });
+    box.appendChild(c);
+  });
 }
 
 /* ---------------- Mondiale (schermata torneo) ---------------- */
 function renderCareer() {
-  // strada verso la coppa
+  const game = currentGame;
+  const career = state.games[game].career;
+  $('career-title').textContent = GAME_META[game].career;
   const road = $('cup-road');
   road.innerHTML = '';
   ROUNDS.forEach((r, i) => {
     const s = document.createElement('span');
-    s.className = 'step' + (state.career.beaten[i] ? ' done' : i === state.career.unlocked - 1 ? ' now' : '');
+    s.className = 'step' + (career.beaten[i] ? ' done' : i === career.unlocked - 1 ? ' now' : '');
     s.textContent = r.icon;
     road.appendChild(s);
   });
@@ -305,19 +677,20 @@ function renderCareer() {
       h.textContent = i === 0 ? '🌍 Fase a gironi' : '⚔️ Fase a eliminazione diretta';
       list.appendChild(h);
     }
-    const unlocked = i < state.career.unlocked;
-    const beaten = state.career.beaten[i];
+    const unlocked = i < career.unlocked;
+    const beaten = career.beaten[i];
+    const stars = game === 'tab' ? tableStars(team.table) : groupStars(i);
     const card = document.createElement('div');
     card.className = 'team-card' + (unlocked ? '' : ' locked') + (beaten ? ' beaten' : '') + (i === 8 ? ' final' : '');
     card.innerHTML = `
       <div class="team-crest" style="background:${team.color}33;border-color:${team.color}">${team.crest}</div>
       <div class="team-info">
         <div class="team-name">${team.name}</div>
-        <div class="team-sub">${ROUNDS[i].label} · Tabellina del ${team.table}</div>
-        <div class="team-stars">${starStr(tableStars(team.table))}</div>
+        <div class="team-sub">${ROUNDS[i].label} · ${roundSubject(game, i)}</div>
+        <div class="team-stars">${starStr(stars)}</div>
       </div>
       <div class="team-state">${unlocked ? (beaten ? '✅' : '▶️') : '🔒'}</div>`;
-    if (unlocked) card.addEventListener('click', () => { Sfx.click(); startMatch(i); });
+    if (unlocked) card.addEventListener('click', () => { Sfx.click(); startMatch(game, i); });
     list.appendChild(card);
   });
 }
@@ -326,37 +699,44 @@ function renderCareer() {
 function renderTrophies() {
   const acc = state.stats.correct + state.stats.wrong;
   const pct = acc ? Math.round(state.stats.correct * 100 / acc) : 0;
+  const trophies = state.games.tab.career.beaten.filter(Boolean).length + state.games.verb.career.beaten.filter(Boolean).length;
   $('stats-box').innerHTML = `
     <div><div class="stat-num">${state.stats.matches}</div><div class="stat-label">Partite</div></div>
     <div><div class="stat-num">${state.stats.wins}</div><div class="stat-label">Vittorie</div></div>
     <div><div class="stat-num">${state.stats.goals}</div><div class="stat-label">Gol fatti</div></div>
     <div><div class="stat-num">${state.stats.correct}</div><div class="stat-label">Risposte giuste</div></div>
     <div><div class="stat-num">${pct}%</div><div class="stat-label">Precisione</div></div>
-    <div><div class="stat-num">${state.career.beaten.filter(Boolean).length}</div><div class="stat-label">Trofei</div></div>`;
+    <div><div class="stat-num">${trophies}</div><div class="stat-label">Trofei</div></div>`;
   const list = $('trophy-list');
   list.innerHTML = '';
-  TEAMS.forEach((team, i) => {
-    const beaten = state.career.beaten[i];
-    const row = document.createElement('div');
-    row.className = 'trophy-row' + (beaten ? '' : ' locked');
-    const label = i === 8 ? '🏆 Coppa del Mondiale delle Tabelline' : `${ROUNDS[i].label}`;
-    const sub = (beaten ? `Hai battuto ${team.name}!` : `Batti ${team.name}`) +
-      ` · Tabellina del ${team.table} ${starStr(tableStars(team.table))}`;
-    row.innerHTML = `
-      <div class="trophy-icon">${beaten ? (i === 8 ? '🏆' : '🏅') : '🔒'}</div>
-      <div class="trophy-info"><div class="trophy-name">${label}</div><div class="trophy-sub">${sub}</div></div>`;
-    list.appendChild(row);
+  [['tab', '✖️ Mondiale delle Tabelline'], ['verb', '📖 Mondiale dei Verbi']].forEach(([game, title]) => {
+    const h = document.createElement('div');
+    h.className = 'round-header';
+    h.textContent = title;
+    list.appendChild(h);
+    TEAMS.forEach((team, i) => {
+      const beaten = state.games[game].career.beaten[i];
+      const stars = game === 'tab' ? tableStars(team.table) : groupStars(i);
+      const row = document.createElement('div');
+      row.className = 'trophy-row' + (beaten ? '' : ' locked');
+      const label = i === 8 ? `🏆 Coppa del ${game === 'tab' ? 'Mondiale delle Tabelline' : 'Mondiale dei Verbi'}` : ROUNDS[i].label;
+      const sub = (beaten ? `Hai battuto ${team.name}!` : `Batti ${team.name}`) + ` · ${roundSubject(game, i)} ${starStr(stars)}`;
+      row.innerHTML = `
+        <div class="trophy-icon">${beaten ? (i === 8 ? '🏆' : '🏅') : '🔒'}</div>
+        <div class="trophy-info"><div class="trophy-name">${label}</div><div class="trophy-sub">${sub}</div></div>`;
+      list.appendChild(row);
+    });
   });
   const reset = document.createElement('button');
   reset.className = 'btn btn-dark';
   reset.style.marginTop = '10px';
   reset.textContent = '🔄 Ricomincia da zero';
   reset.addEventListener('click', async () => {
-    const ok = await modal({ title: 'Sicuro?', text: 'Cancelli tutti i progressi e i trofei. Non si può annullare!', okText: 'Sì, ricomincia' });
+    const ok = await modal({ title: 'Sicuro?', text: 'Cancelli tutti i progressi e i trofei di TUTTI i giochi. Non si può annullare!', okText: 'Sì, ricomincia' });
     if (ok) {
       state = freshState();
       saveLocal();
-      toast('Nuovo Mondiale pronto!');
+      toast('Tutto azzerato: si riparte!');
       show('home');
     }
   });
@@ -400,7 +780,11 @@ function setPossession(who) {
 }
 
 /* ---------------- partita ---------------- */
-const match = { active: false, teamIdx: 0, score: [0, 0], minute: 0, zone: 2, poss: 'you', quit: false };
+const match = {
+  active: false, game: 'tab', teamIdx: 0, friendly: false,
+  focus: [], review: [], timer: 15000, oppGoalChance: 0.55,
+  score: [0, 0], minute: 0, zone: 2, poss: 'you', quit: false,
+};
 
 let timerHandle = null;
 
@@ -431,17 +815,28 @@ function updateScoreboard(pens = null) {
   $('sb-minute').textContent = `${Math.min(match.minute, 90)}'`;
 }
 
-/* domanda col tastierino: si scrive il risultato cifra per cifra */
+/* ---------------- UI domanda: dispatcher ---------------- */
+function showPanel(which) {
+  $('qa-tab').classList.toggle('hidden', which !== 'tab');
+  $('qa-verb-a').classList.toggle('hidden', which !== 'va');
+  $('qa-verb-b').classList.toggle('hidden', which !== 'vb');
+}
+
+function askQuestion() {
+  return match.game === 'tab' ? askTabQuestion() : askVerbQuestion();
+}
+
+/* --- tabelline: tastierino --- */
 let keyHandler = null;
 
-function askQuestion(focusTable, timerMs) {
+function askTabQuestion() {
   return new Promise(resolve => {
-    const q = pickQuestion(focusTable);
+    const q = pickTabQuestion(match.focus, match.review);
     const qt = $('question-text');
+    qt.classList.remove('q-correct', 'q-wrong', 'q-verb');
+    qt.innerHTML = `${q.a} × ${q.b} = <span id="typed" class="typed"></span>`;
+    showPanel('tab');
     const typedEl = $('typed');
-    qt.classList.remove('q-correct', 'q-wrong');
-    qt.childNodes[0].nodeValue = `${q.a} × ${q.b} = `;
-    typedEl.textContent = '';
     let typed = '';
     let settled = false;
     const t0 = performance.now();
@@ -455,16 +850,14 @@ function askQuestion(focusTable, timerMs) {
       document.removeEventListener('keydown', keyHandler);
       keyHandler = null;
       keys.forEach(k => { k.disabled = true; });
-      const fast = performance.now() - t0 < 4500;
-      updateFact(q.key, correct, fast);
+      updateFact('tab', q.key, correct, performance.now() - t0 < 4500);
       if (correct) {
         qt.classList.add('q-correct');
         Sfx.correct();
       } else {
         // momento chiave per imparare: mostra la risposta giusta, ben visibile
         qt.classList.add('q-wrong');
-        qt.childNodes[0].nodeValue = `${q.a} × ${q.b} = `;
-        typedEl.textContent = String(q.answer);
+        qt.innerHTML = `${q.a} × ${q.b} = <span class="typed">${q.answer}</span>`;
         Sfx.wrong();
       }
       resolve({ correct, timedOut });
@@ -472,18 +865,9 @@ function askQuestion(focusTable, timerMs) {
 
     const press = (k) => {
       if (settled) return;
-      if (k === 'del') {
-        typed = typed.slice(0, -1);
-        Sfx.click();
-      } else if (k === 'ok') {
-        if (!typed) return;
-        finish(+typed === q.answer);
-        return;
-      } else {
-        if (typed.length >= 3) return;
-        typed += k;
-        Sfx.click();
-      }
+      if (k === 'del') { typed = typed.slice(0, -1); Sfx.click(); }
+      else if (k === 'ok') { if (typed) finish(+typed === q.answer); return; }
+      else { if (typed.length >= 3) return; typed += k; Sfx.click(); }
       typedEl.textContent = typed;
     };
 
@@ -495,7 +879,128 @@ function askQuestion(focusTable, timerMs) {
     };
     document.addEventListener('keydown', keyHandler);
 
-    startTimer(timerMs, () => finish(false, true));
+    startTimer(match.timer, () => finish(false, true));
+  });
+}
+
+/* --- verbi: due tipi di domanda --- */
+function chipRow(container, labels, onPick) {
+  container.innerHTML = '';
+  const chips = labels.map(lab => {
+    const c = document.createElement('button');
+    c.className = 'chip';
+    c.textContent = lab;
+    c.addEventListener('click', () => { Sfx.click(); onPick(lab, c); });
+    container.appendChild(c);
+    return c;
+  });
+  return chips;
+}
+const selectChip = (chips, chosen) => chips.forEach(c => c.classList.toggle('sel', c === chosen));
+
+function askVerbQuestion() {
+  return new Promise(resolve => {
+    const q = pickVerbQuestion(match.focus, match.review);
+    const qt = $('question-text');
+    qt.classList.remove('q-correct', 'q-wrong');
+    qt.classList.add('q-verb');
+    let settled = false;
+    const t0 = performance.now();
+    let cleanupExtra = () => {};
+
+    const finish = (correct, timedOut, solutionHtml) => {
+      if (settled) return;
+      settled = true;
+      stopTimer();
+      cleanupExtra();
+      updateFact('verb', q.tempoKey, correct, performance.now() - t0 < 9000);
+      if (correct) {
+        qt.classList.add('q-correct');
+        Sfx.correct();
+      } else {
+        qt.classList.add('q-wrong');
+        qt.innerHTML = solutionHtml; // la soluzione, ben visibile
+        Sfx.wrong();
+      }
+      resolve({ correct, timedOut });
+    };
+
+    if (q.type === 'A') {
+      /* prompt: modo+tempo+persona+verbo → scegli il pronome e scrivi la forma */
+      const personaTxt = q.persona >= 0 ? ` · ${PERSON_LABEL[q.persona]}` : '';
+      qt.innerHTML = `<div class="q-line1">${q.tempo.modo.toUpperCase()} ${q.tempo.tempo.toUpperCase()}${personaTxt}</div>
+                      <div class="q-line2">del verbo <b>${q.verb.inf.toUpperCase()}</b></div>`;
+      showPanel('va');
+      const input = $('va-input');
+      input.value = '';
+      input.disabled = false;
+      let pronoun = -2; // -2 = non scelto, -1 = non serve
+      const needPronoun = q.persona >= 0;
+
+      const pronChips = needPronoun
+        ? chipRow($('va-pronouns'), PRONOUNS, (lab, c) => { pronoun = PRONOUNS.indexOf(lab); selectChip(pronChips, c); })
+        : ($('va-pronouns').innerHTML = '', []);
+      if (!needPronoun) pronoun = -1;
+
+      chipRow($('va-accents'), ['à', 'è', 'ì', 'ò', 'ù'], (lab) => {
+        input.value += lab;
+        input.focus();
+      });
+
+      const solution = `<div class="q-line1">${q.persona >= 0 ? PRONOUNS[q.persona] + ' ' : ''}<b class="typed">${q.display}</b></div>
+                        <div class="q-line2">${q.tempo.modo} ${q.tempo.tempo.toLowerCase()} di ${q.verb.inf}</div>`;
+      const submit = () => {
+        if (settled) return;
+        const txt = input.value;
+        if (!txt.trim()) return;
+        const okPronoun = !needPronoun || pronoun === q.persona;
+        finish(okPronoun && matchForm(txt, q.accepted), false, solution);
+      };
+      $('va-ok').onclick = submit;
+      input.onkeydown = (e) => { if (e.key === 'Enter') submit(); };
+      cleanupExtra = () => { input.disabled = true; $('va-ok').onclick = null; input.onkeydown = null; };
+
+      startTimer(match.timer, () => finish(false, true, solution));
+    } else {
+      /* prompt: la forma → scegli modo, tempo e persona */
+      qt.innerHTML = `<div class="q-line1">«<b class="typed">${q.display}</b>»</div>
+                      <div class="q-line2">del verbo <b>${q.verb.inf.toUpperCase()}</b> — che forma è?</div>`;
+      showPanel('vb');
+      const combos = acceptedCombos(q.verb, q.display);
+      let modo = null, tempoKey = null, persona = -2;
+
+      const tempoBox = $('vb-tempo');
+      const personaChips = chipRow($('vb-persona'), [...PRONOUNS, '—'], (lab, c) => {
+        persona = lab === '—' ? -1 : PRONOUNS.indexOf(lab);
+        selectChip(personaChips, c);
+      });
+      const renderTempi = () => {
+        const tempi = TEMPI.filter(t => t.modo === modo);
+        const chips = chipRow(tempoBox, tempi.map(t => t.tempo), (lab, c) => {
+          tempoKey = tempi.find(t => t.tempo === lab).key;
+          selectChip(chips, c);
+        });
+      };
+      const modoChips = chipRow($('vb-modo'), MODI, (lab, c) => {
+        modo = lab; tempoKey = null;
+        selectChip(modoChips, c);
+        renderTempi();
+      });
+      tempoBox.innerHTML = '<span class="chip-hint">← scegli prima il modo</span>';
+
+      const best = combos[0];
+      const bt = TEMPO_BY_KEY[best.key];
+      const solution = `<div class="q-line1"><b class="typed">${bt.modo} ${bt.tempo.toLowerCase()}</b>${best.persona >= 0 ? ' · ' + PRONOUNS[best.persona] : ''}</div>
+                        <div class="q-line2">«${q.display}» — ${q.verb.inf}</div>`;
+      $('vb-ok').onclick = () => {
+        if (settled || !tempoKey || persona === -2) return;
+        const ok = combos.some(c => c.key === tempoKey && c.persona === persona);
+        finish(ok, false, solution);
+      };
+      cleanupExtra = () => { $('vb-ok').onclick = null; };
+
+      startTimer(match.timer, () => finish(false, true, solution));
+    }
   });
 }
 
@@ -513,10 +1018,33 @@ async function overlayCard(roundTxt, subTxt, team, ms = 2600) {
   oc.classList.add('hidden');
 }
 
-async function startMatch(teamIdx) {
+/* prepara e gioca una partita (mondiale o amichevole) */
+async function startMatch(game, teamIdx, friendly = false) {
   const team = TEAMS[teamIdx];
-  const cfg = teamConfig(teamIdx);
-  Object.assign(match, { active: true, teamIdx, score: [0, 0], minute: 0, zone: 2, poss: 'you', quit: false });
+  const career = state.games[game].career;
+
+  let focus, review;
+  if (game === 'tab') {
+    if (friendly) { focus = [...state.sel.tab]; review = []; }
+    else {
+      focus = [team.table];
+      review = TEAMS.slice(0, Math.min(career.unlocked, 9)).map(t => t.table).filter(t => t !== team.table);
+    }
+  } else {
+    if (friendly) { focus = state.sel.verb.flatMap(i => VERB_GROUPS[i].keys); review = []; }
+    else {
+      focus = VERB_GROUPS[teamIdx].keys.slice();
+      if (teamIdx === 8) review = VERB_GROUPS.slice(0, 8).flatMap(g => g.keys); // finale: ripasso di tutto
+      else review = VERB_GROUPS.slice(0, Math.min(career.unlocked, 9)).flatMap(g => g.keys).filter(k => !focus.includes(k));
+    }
+  }
+
+  Object.assign(match, {
+    active: true, game, teamIdx, friendly, focus, review,
+    timer: friendly ? FRIENDLY_TIMER[game] : (game === 'tab' ? TIMERS_TAB : TIMERS_VERB)[teamIdx],
+    oppGoalChance: 0.5 + teamIdx * 0.03,
+    score: [0, 0], minute: 0, zone: 2, poss: 'you', quit: false,
+  });
 
   $('sb-you-name').textContent = state.name || 'Tu';
   $('sb-opp-name').textContent = team.name;
@@ -527,7 +1055,11 @@ async function startMatch(teamIdx) {
   setComment('Fischio d\'inizio!');
   show('match');
   Sfx.whistle();
-  await overlayCard(ROUNDS[teamIdx].short, `Tabellina del ${team.table} · ${team.stadium}`, team);
+  await overlayCard(
+    friendly ? 'AMICHEVOLE' : ROUNDS[teamIdx].short,
+    `${friendly ? (game === 'tab' ? 'Tabelline scelte da te' : 'Tempi scelti da te') : roundSubject(game, teamIdx)} · ${team.stadium}`,
+    team
+  );
 
   for (let qi = 0; qi < QUESTIONS_PER_MATCH && !match.quit; qi++) {
     if (qi === Math.floor(QUESTIONS_PER_MATCH / 2)) {
@@ -536,14 +1068,13 @@ async function startMatch(teamIdx) {
     }
     match.minute = qi * MIN_PER_QUESTION + 1;
     updateScoreboard();
-    const { correct, timedOut } = await askQuestion(team.table, cfg.timer);
+    const { correct, timedOut } = await askQuestion();
     if (match.quit) break;
     await sleep(700);
 
     if (match.poss === 'you') {
       if (correct) {
         if (match.zone >= 4) {
-          // in area: si tira!
           cameraCut();
           const res = await runShot(false);
           if (match.quit) break;
@@ -560,11 +1091,10 @@ async function startMatch(teamIdx) {
           updateScoreboard();
           await sleep(1400);
         } else {
-          // si avanza col passaggio disegnato
           setComment(say('correctYou'));
           await sleep(700);
           cameraCut();
-          const res = await runPass(match.zone, teamIdx);
+          const res = await runPass(match.zone, match.teamIdx);
           if (match.quit) break;
           cameraCut();
           show('match');
@@ -583,7 +1113,7 @@ async function startMatch(teamIdx) {
         match.poss = 'opp';
         setPossession('opp');
         setComment(timedOut ? say('timeout') : say('wrongYou'));
-        await sleep(timedOut ? 1600 : 2400);
+        await sleep(timedOut ? 1600 : 2600);
       }
     } else { // palla all'avversario
       if (correct) {
@@ -597,7 +1127,7 @@ async function startMatch(teamIdx) {
         if (match.zone <= 0) {
           setComment(`Tiro di ${team.name}...`);
           await sleep(1400);
-          if (Math.random() < cfg.oppGoalChance) {
+          if (Math.random() < match.oppGoalChance) {
             match.score[1]++;
             Sfx.ohh();
             setComment(say('oppGoal'));
@@ -611,26 +1141,31 @@ async function startMatch(teamIdx) {
           await sleep(1700);
         } else {
           setComment(say('oppAdvance'));
-          await sleep(2300);
+          await sleep(2600);
         }
       }
     }
   }
 
-  if (match.quit) { match.active = false; renderCareer(); show('career'); return; }
+  if (match.quit) {
+    match.active = false;
+    if (match.friendly) show('gamemenu');
+    else { renderCareer(); show('career'); }
+    return;
+  }
 
   match.minute = 90;
   updateScoreboard();
   Sfx.whistle(true);
 
   if (match.score[0] === match.score[1]) {
-    await penalties(team, cfg);
+    await penalties(team);
   }
   await endMatch(team);
 }
 
 /* ---------------- rigori ---------------- */
-async function penalties(team, cfg) {
+async function penalties(team) {
   await overlayCard('CALCI DI RIGORE', 'Pareggio! Si decide dal dischetto! 😱', team, 2400);
   const pens = [0, 0];
   let round = 0;
@@ -638,7 +1173,7 @@ async function penalties(team, cfg) {
   while (true) {
     round++;
     setComment(`Rigore ${round}: rispondi e tira!`);
-    const { correct } = await askQuestion(team.table, Math.max(cfg.timer, 10000));
+    const { correct } = await askQuestion();
     if (match.quit) return;
     let mine = 'miss';
     if (correct) {
@@ -690,26 +1225,34 @@ async function endMatch(team) {
   match.active = false;
   const won = match.score[0] > match.score[1];
   const i = match.teamIdx;
+  const game = match.game;
+  const career = state.games[game].career;
   state.stats.matches++;
   if (won) {
     state.stats.wins++;
-    if (!state.career.beaten[i]) {
-      state.career.beaten[i] = true;
-      state.career.unlocked = Math.max(state.career.unlocked, Math.min(i + 2, 9));
+    if (!match.friendly && !career.beaten[i]) {
+      career.beaten[i] = true;
+      career.unlocked = Math.max(career.unlocked, Math.min(i + 2, 9));
     }
   }
   saveLocal();
 
-  const isFinal = i === 8;
+  const isFinal = !match.friendly && i === 8;
+  const cupName = game === 'tab' ? 'Coppa del Mondiale delle Tabelline' : 'Coppa del Mondiale dei Verbi';
   $('result-emoji').textContent = won ? (isFinal ? '🏆' : '🥇') : '💪';
   $('result-title').textContent = won ? (isFinal ? 'CAMPIONE DEL MONDIALE!' : 'HAI VINTO!') : 'Peccato!';
   $('result-score').textContent = `${match.score[0]} - ${match.score[1]}`;
   $('result-text').textContent = won
-    ? (isFinal
-        ? `${state.name}, hai alzato la Coppa del Mondiale delle Tabelline! Sei una leggenda! 👑`
-        : `Hai battuto ${team.name} e superato: ${ROUNDS[i].label}! ${i + 1 < 9 ? 'Ti aspetta: ' + ROUNDS[i + 1].label + '!' : ''}`)
+    ? (match.friendly
+        ? `Bella amichevole! L'allenamento ti rende più forte. 💪`
+        : isFinal
+          ? `${state.name}, hai alzato la ${cupName}! Sei una leggenda! 👑`
+          : `Hai battuto ${team.name} e superato: ${ROUNDS[i].label}! ${i + 1 < 9 ? 'Ti aspetta: ' + ROUNDS[i + 1].label + '!' : ''}`)
     : `${team.name} ha vinto stavolta. Riprova: ogni partita ti rende più forte!`;
-  $('result-stars').innerHTML = `Tabellina del ${team.table}: ${starStr(tableStars(team.table))}`;
+  const stars = game === 'tab'
+    ? (match.friendly ? starStr(starsFromAvg(state.sel.tab.reduce((s, t) => s + tableStars(t), 0) / state.sel.tab.length * 5 / 3)) : starStr(tableStars(team.table)))
+    : starStr(match.friendly ? 0 : groupStars(i));
+  $('result-stars').innerHTML = match.friendly ? '' : `${roundSubject(game, i)}: ${stars}`;
   $('result-confetti').innerHTML = '';
   if (won) resultConfetti();
   show('result');
@@ -731,7 +1274,6 @@ function bezierAt(p0, p1, p2, t) {
   };
 }
 
-/* dai punti tracciati ricava P1 (controllo, con effetto amplificato) e P2 */
 function traceToBezier(points, clampEnd) {
   const p0 = points[0];
   const raw = points[points.length - 1];
@@ -748,7 +1290,6 @@ function traceToBezier(points, clampEnd) {
   return { p0, p1, p2 };
 }
 
-/* raccolta del tracciato con il dito/mouse; risolve coi punti raccolti */
 function collectTrace(svg, tracePath, startPt, startRadius, minLen, onTooShort) {
   return new Promise(resolve => {
     let pts = [];
@@ -838,14 +1379,12 @@ const PASS_BALL = { x: 180, y: 600 };
 
 function initPassScene() {
   const lines = $('pass-lines');
-  // strisce orizzontali di prato (prospettiva morbida)
   [60, 180, 310, 450, 600].forEach((y, i) => {
     el('rect', { x: 0, y, width: 360, height: [50, 58, 66, 76, 90][i], fill: '#2c944a', opacity: 0.45 }, lines);
   });
 }
 
 function passLayout(zone, teamIdx) {
-  // inquadrature diverse: a centrocampo si vede il cerchio, vicino all'area le linee dell'area
   const rnd = (a, b) => a + Math.random() * (b - a);
   const mates = [
     { x: rnd(60, 130), y: rnd(230, 320) },
@@ -853,7 +1392,6 @@ function passLayout(zone, teamIdx) {
   ];
   const nDef = Math.min(3, 1 + (zone >= 3 ? 1 : 0) + (teamIdx >= 5 ? 1 : 0));
   const defs = [];
-  // ogni difensore si piazza (con un po' di errore) sulla linea del passaggio facile
   for (let i = 0; i < nDef; i++) {
     const target = mates[i % 2];
     const t = rnd(0.4, 0.62);
@@ -870,7 +1408,6 @@ function drawPassScene(zone, teamIdx, layout) {
   actors.innerHTML = '';
   const lines = $('pass-lines');
   [...lines.querySelectorAll('.deco')].forEach(n => n.remove());
-  // dettagli d'inquadratura per zona
   if (zone <= 2) {
     const c = el('circle', { cx: 180, cy: 100, r: 120, fill: 'none', stroke: '#e8f5e9', 'stroke-width': 3, opacity: 0.5 }, lines);
     c.classList.add('deco');
@@ -881,16 +1418,13 @@ function drawPassScene(zone, teamIdx, layout) {
     l.classList.add('deco');
   }
   const team = TEAMS[teamIdx];
-  // compagni con anello-bersaglio
   layout.mates.forEach(m => {
     el('circle', { cx: m.x, cy: m.y + 20, r: 44, fill: '#ffe95c', opacity: 0.14 }, actors);
     const ring = el('circle', { cx: m.x, cy: m.y + 20, r: 44, fill: 'none', stroke: '#ffe95c', 'stroke-width': 3, 'stroke-dasharray': '8 7' }, actors);
     ring.classList.add('ring-pulse');
     drawPlayer(actors, m.x, m.y, '#2d7dd2', 0.85);
   });
-  // difensori
   layout.defGroups = layout.defs.map(d => drawPlayer(actors, d.x, d.y, team.color, 0.95));
-  // il tuo giocatore, di spalle, vicino alla palla
   drawPlayer(actors, 180, 668, '#2d7dd2', 1.05);
 }
 
@@ -904,6 +1438,7 @@ function runPass(zone, teamIdx) {
     $('pass-ball').style.transform = `translate(${PASS_BALL.x}px, ${PASS_BALL.y}px)`;
     $('pass-result').classList.add('hidden');
     $('pass-msg').classList.remove('hidden');
+    $('pass-msg').innerHTML = 'Disegna il passaggio verso un compagno! 👆<br><small>Occhio ai difensori: gli passano vicino? Intercettano!</small>';
     show('pass');
 
     const pts = await collectTrace(svg, trace, PASS_BALL, 105, 60,
@@ -915,7 +1450,6 @@ function runPass(zone, teamIdx) {
     trace.setAttribute('d', `M${p0.x},${p0.y} Q${p1.x},${p1.y} ${p2.x},${p2.y}`);
     Sfx.pass();
 
-    // dove viene intercettato? campiona la curva contro i difensori
     const INTERCEPT_R = 30;
     let stopT = 1, interceptedBy = -1;
     outer:
@@ -946,7 +1480,7 @@ function runPass(zone, teamIdx) {
       resEl.style.color = '#ffd0c9';
       Sfx.intercept();
       const g = layout.defGroups[interceptedBy];
-      if (g) g.setAttribute('opacity', '1'), g.style.filter = 'drop-shadow(0 0 10px #fff)';
+      if (g) g.style.filter = 'drop-shadow(0 0 10px #fff)';
     } else {
       resEl.textContent = 'PASSAGGIO A VUOTO!';
       resEl.style.color = '#ffd0c9';
@@ -965,8 +1499,6 @@ const SHOT = {
   goal: { left: 68, right: 292, top: 292, bottom: 466 },
   keeperY: 412,
 };
-
-let keeperShirt = '#f2a71b';
 
 function initShotScene() {
   const net = $('net');
@@ -992,6 +1524,7 @@ function initShotScene() {
 }
 
 function resetShotScene() {
+  const keeperShirt = TEAMS[match.teamIdx].color;
   const keeper = $('keeper');
   keeper.innerHTML = '';
   const g = el('g', {}, keeper);
@@ -1031,7 +1564,6 @@ function confettiBurst() {
 function runShot(penalty) {
   return new Promise(async resolve => {
     const svg = $('shotSvg');
-    keeperShirt = TEAMS[match.teamIdx].color;
     resetShotScene();
     $('shot-msg').innerHTML = penalty
       ? 'Rigore! Disegna il tiro! 👆'
@@ -1105,21 +1637,18 @@ function updateSoundBtn() {
   Sfx.setEnabled(state.sound);
 }
 
-async function onPlay() {
-  Sfx.unlock(); Sfx.click();
-  if (!state.name) {
-    const name = await modal({
-      title: 'Benvenuto, campione! ⚽',
-      text: 'Come ti chiami? Il tuo nome apparirà sulla maglia!',
-      input: true, okText: 'Inizia!', placeholder: 'Il tuo nome',
-    });
-    if (name === null) return;
-    state.name = (name || 'Campione').replace(/[^A-Za-zÀ-ÿ ]/g, '').slice(0, 12) || 'Campione';
-    saveLocal();
-    toast(`Forza ${state.name}! 💪`);
-  }
-  renderCareer();
-  show('career');
+async function ensureName() {
+  if (state.name) return true;
+  const name = await modal({
+    title: 'Benvenuto, campione! ⚽',
+    text: 'Come ti chiami? Il tuo nome apparirà sulla maglia!',
+    input: true, okText: 'Inizia!', placeholder: 'Il tuo nome',
+  });
+  if (name === null) return false;
+  state.name = (name || 'Campione').replace(/[^A-Za-zÀ-ÿ ]/g, '').slice(0, 12) || 'Campione';
+  saveLocal();
+  toast(`Forza ${state.name}! 💪`);
+  return true;
 }
 
 function init() {
@@ -1129,7 +1658,8 @@ function init() {
   initShotScene();
   updateSoundBtn();
 
-  $('btn-play').addEventListener('click', onPlay);
+  $('btn-tab').addEventListener('click', async () => { Sfx.unlock(); Sfx.click(); if (await ensureName()) openGameMenu('tab'); });
+  $('btn-verb').addEventListener('click', async () => { Sfx.unlock(); Sfx.click(); if (await ensureName()) openGameMenu('verb'); });
   $('btn-trophies').addEventListener('click', () => { Sfx.click(); renderTrophies(); show('trophies'); });
   $('btn-code').addEventListener('click', () => { Sfx.click(); renderCode(); show('code'); });
   $('btn-sound').addEventListener('click', () => {
@@ -1137,6 +1667,20 @@ function init() {
     saveLocal();
     updateSoundBtn();
     Sfx.click();
+  });
+
+  $('btn-mondiale').addEventListener('click', () => { Sfx.click(); renderCareer(); show('career'); });
+  $('btn-friendly').addEventListener('click', () => { Sfx.click(); renderFriendly(); show('friendly'); });
+  $('btn-sel-all').addEventListener('click', () => {
+    Sfx.click();
+    state.sel[currentGame] = currentGame === 'tab' ? [2, 3, 4, 5, 6, 7, 8, 9, 10] : VERB_GROUPS.map((g, i) => i);
+    saveLocal();
+    renderFriendly();
+  });
+  $('btn-friendly-play').addEventListener('click', () => {
+    Sfx.click();
+    const opp = TEAMS[Math.floor(Math.random() * TEAMS.length)];
+    startMatch(currentGame, TEAMS.indexOf(opp), true);
   });
 
   document.querySelectorAll('.btn-back').forEach(b =>
@@ -1147,8 +1691,12 @@ function init() {
     if (ok) { match.quit = true; stopTimer(); }
   });
 
-  $('btn-result-career').addEventListener('click', () => { Sfx.click(); renderCareer(); show('career'); });
-  $('btn-result-replay').addEventListener('click', () => { Sfx.click(); startMatch(match.teamIdx); });
+  $('btn-result-career').addEventListener('click', () => {
+    Sfx.click();
+    if (match.friendly) show('gamemenu');
+    else { renderCareer(); show('career'); }
+  });
+  $('btn-result-replay').addEventListener('click', () => { Sfx.click(); startMatch(match.game, match.teamIdx, match.friendly); });
 
   $('btn-copy-code').addEventListener('click', async () => {
     const code = $('save-code').textContent;

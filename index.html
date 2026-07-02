@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>CalcioMat — Le tabelline in gol!</title>
-<meta name="description" content="Impara le tabelline dal 2 al 10 giocando il Mondiale delle Tabelline: rispondi, disegna passaggi e tiri, vinci la coppa!">
+<meta name="description" content="Impara tabelline e verbi giocando a calcio: rispondi, disegna passaggi e tiri, vinci il Mondiale! Gioco gratuito per bambini.">
 <meta name="theme-color" content="#0e1b2e">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
@@ -29,23 +29,52 @@
         <polygon points="68,168 44,178 24,152 48,142" fill="#12233d"/>
       </svg>
       <h1>Calcio<span>Mat</span></h1>
-      <p class="tagline">Le tabelline in gol! ⚽</p>
+      <p class="tagline">Tabelline e verbi... in gol! ⚽</p>
       <div class="flm-badge">✨ UN GIOCO <b>FLM</b> ✨</div>
     </div>
     <div class="home-buttons">
-      <button id="btn-play" class="btn btn-big btn-green">▶ Gioca</button>
+      <button id="btn-tab" class="btn btn-big btn-green">✖️ Tabelline</button>
+      <button id="btn-verb" class="btn btn-big btn-purple">📖 Verbi</button>
       <button id="btn-trophies" class="btn btn-blue">🏆 Trofei</button>
       <button id="btn-code" class="btn btn-blue">💾 Salvataggio</button>
       <button id="btn-sound" class="btn btn-dark">🔊 Suoni: ON</button>
     </div>
-    <p class="credits">Gioco libero e gratuito per imparare le tabelline.<br>Nessuna pubblicità, nessun dato raccolto.</p>
+    <p class="credits">Gioco libero e gratuito per imparare tabelline e verbi.<br>Nessuna pubblicità, nessun dato raccolto.</p>
+  </section>
+
+  <!-- ============ MENU GIOCO ============ -->
+  <section id="screen-gamemenu" class="screen">
+    <header class="topbar">
+      <button class="btn-back" data-back="home">←</button>
+      <h2 id="gm-title">✖️ Tabelline</h2>
+    </header>
+    <div class="gm-buttons">
+      <button id="btn-mondiale" class="btn btn-big btn-green">🏆 Mondiale</button>
+      <p class="gm-hint">Il torneo: batti tutte le squadre e alza la coppa!</p>
+      <button id="btn-friendly" class="btn btn-blue">🤝 Amichevole</button>
+      <p class="gm-hint" id="gm-friendly-hint">Partita libera: scegli tu quali tabelline allenare.</p>
+    </div>
+  </section>
+
+  <!-- ============ AMICHEVOLE (selezione) ============ -->
+  <section id="screen-friendly" class="screen">
+    <header class="topbar">
+      <button class="btn-back" data-back="gamemenu">←</button>
+      <h2>🤝 Amichevole</h2>
+    </header>
+    <p class="career-hint" id="friendly-hint">Scegli cosa allenare (puoi selezionarne più di una):</p>
+    <div id="sel-chips" class="sel-chips"></div>
+    <div class="sel-actions">
+      <button id="btn-sel-all" class="btn btn-dark">✔ Tutte</button>
+      <button id="btn-friendly-play" class="btn btn-green">⚽ Gioca</button>
+    </div>
   </section>
 
   <!-- ============ MONDIALE ============ -->
   <section id="screen-career" class="screen">
     <header class="topbar">
-      <button class="btn-back" data-back="home">←</button>
-      <h2>🏆 Mondiale delle Tabelline</h2>
+      <button class="btn-back" data-back="gamemenu">←</button>
+      <h2 id="career-title">🏆 Mondiale delle Tabelline</h2>
     </header>
     <div id="cup-road" class="cup-road"></div>
     <div id="team-list" class="team-list"></div>
@@ -90,7 +119,8 @@
     <div class="question-area">
       <div id="timer-bar-wrap" class="timer-bar-wrap"><div id="timer-bar"></div></div>
       <div id="question-text" class="question-text">7 × 8 = <span id="typed" class="typed">_</span></div>
-      <div id="keypad" class="keypad">
+
+      <div id="qa-tab" class="keypad">
         <button class="key" data-k="7">7</button>
         <button class="key" data-k="8">8</button>
         <button class="key" data-k="9">9</button>
@@ -103,6 +133,22 @@
         <button class="key key-del" data-k="del">⌫</button>
         <button class="key" data-k="0">0</button>
         <button class="key key-ok" data-k="ok">⚽</button>
+      </div>
+
+      <div id="qa-verb-a" class="qa-verb hidden">
+        <div id="va-pronouns" class="chip-row"></div>
+        <div class="input-row">
+          <input id="va-input" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="scrivi qui...">
+          <button id="va-ok" class="btn btn-green btn-ok-small">⚽</button>
+        </div>
+        <div id="va-accents" class="chip-row accents"></div>
+      </div>
+
+      <div id="qa-verb-b" class="qa-verb hidden">
+        <div id="vb-modo" class="chip-row"></div>
+        <div id="vb-tempo" class="chip-row"></div>
+        <div id="vb-persona" class="chip-row"></div>
+        <button id="vb-ok" class="btn btn-green btn-ok-wide">⚽ Conferma</button>
       </div>
     </div>
   </section>
