@@ -167,23 +167,36 @@ body {
 }
 .home-logo h1 span { color: var(--yellow); }
 .tagline { font-size: 1.15rem; opacity: 0.9; font-weight: 600; }
-.flm-badge {
-  margin-top: 12px;
-  display: inline-block;
-  background: linear-gradient(135deg, #f2a71b, #e74c3c, #9b59b6);
-  padding: 7px 18px;
-  border-radius: 999px;
-  font-size: 0.92rem;
-  font-weight: 800;
-  letter-spacing: 2px;
-  box-shadow: 0 4px 14px rgba(242,167,27,0.4);
-  animation: badgeGlow 2.4s ease-in-out infinite;
+/* "Franci, Lucio e Marghe presentano..." */
+.presents {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.02rem;
+  line-height: 1.5;
+  margin-bottom: 14px;
+  color: var(--yellow);
+  text-shadow: 0 2px 8px rgba(255,233,92,0.35);
+  animation: badgeGlow 2.6s ease-in-out infinite;
 }
-.flm-badge b { color: #fff; }
+.presents em { font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px; }
 @keyframes badgeGlow {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); box-shadow: 0 4px 22px rgba(242,167,27,0.7); }
+  50% { transform: scale(1.04); }
 }
+
+.btn-install {
+  margin-top: 2px;
+  background: none;
+  border: 1.5px dashed #3f6690;
+  border-radius: 14px;
+  color: var(--white);
+  opacity: 0.85;
+  padding: 11px 14px;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.06s, border-color 0.15s;
+}
+.btn-install:active { transform: scale(0.97); }
 .home-buttons { display: flex; flex-direction: column; gap: 13px; width: min(330px, 88%); }
 .credits { font-size: 0.72rem; opacity: 0.45; line-height: 1.5; }
 
@@ -631,7 +644,7 @@ body {
   text-align: center;
 }
 .modal-box h3 { font-size: 1.25rem; font-weight: 900; }
-.modal-box p { font-size: 0.95rem; opacity: 0.85; line-height: 1.45; }
+.modal-box p { font-size: 0.95rem; opacity: 0.85; line-height: 1.5; white-space: pre-line; }
 #modal-input {
   background: var(--navy);
   border: 1px solid #3f6690;

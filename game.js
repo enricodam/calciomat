@@ -1838,6 +1838,49 @@ function init() {
     toast(`Carriera di ${state.name} caricata! ⚽`);
   });
 
+  // ---- installazione come app (PWA) ----
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let installPrompt = null;
+
+  if (!isStandalone) $('btn-install').classList.remove('hidden');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    installPrompt = e; // Android / Chrome: potremo aprire il prompt nativo
+    $('btn-install').classList.remove('hidden');
+  });
+
+  window.addEventListener('appinstalled', () => {
+    $('btn-install').classList.add('hidden');
+    toast('App installata! La trovi tra le tue app 🎉');
+  });
+
+  $('btn-install').addEventListener('click', async () => {
+    Sfx.click();
+    if (installPrompt) {
+      // Android e Chrome: installazione con un tocco
+      installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      if (outcome === 'accepted') installPrompt = null;
+      return;
+    }
+    if (isIOS) {
+      await modal({
+        title: '📲 Installa su iPhone/iPad',
+        text: 'Da Safari:\n\n1️⃣  Tocca il pulsante Condividi in basso (il quadrato con la freccia ↑)\n\n2️⃣  Scorri e scegli "Aggiungi alla schermata Home"\n\n3️⃣  Tocca "Aggiungi"\n\nCalcioMat apparirà tra le tue app, con la sua icona, e funzionerà anche senza internet!',
+        okText: 'Ho capito', cancel: false,
+      });
+    } else {
+      await modal({
+        title: '📲 Installa l\'app',
+        text: 'Apri il menu del browser (⋮ o ⋯ in alto) e scegli "Installa app" oppure "Aggiungi a schermata Home".\n\nCalcioMat apparirà tra le tue app e funzionerà anche senza internet!',
+        okText: 'Ho capito', cancel: false,
+      });
+    }
+  });
+
   // sblocca l'audio al primo tocco (richiesto da iOS)
   document.addEventListener('pointerdown', () => Sfx.unlock(), { once: true });
 

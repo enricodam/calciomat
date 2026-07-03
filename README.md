@@ -1,6 +1,6 @@
 # ⚽ CalcioMat — Tabelline e verbi in gol!
 
-Gioco web gratuito per imparare le **tabelline dal 2 al 10** e le **coniugazioni dei verbi italiani**, a tema calcio. Un gioco FLM ✨
+Gioco web gratuito per imparare le **tabelline dal 2 al 10** e le **coniugazioni dei verbi italiani**, a tema calcio. ✨ *Franci, Lucio e Marghe presentano...* ✨
 
 **Gioca subito:** https://enricodam.github.io/calciomat/
 
@@ -21,7 +21,7 @@ Gioco web gratuito per imparare le **tabelline dal 2 al 10** e le **coniugazioni
 ## Tecnica
 
 - HTML/CSS/JS puro, nessuna dipendenza, nessun server: funziona su GitHub Pages.
-- PWA installabile ("Aggiungi alla schermata Home") e giocabile offline.
+- PWA installabile e giocabile offline: pulsante "Installa l'app" in home (prompt nativo su Android/Chrome, istruzioni guidate su iPhone/iPad).
 - Suoni sintetizzati via Web Audio (nessun file audio).
 - Nessuna pubblicità, nessun dato raccolto, nessun contenuto protetto da copyright: grafica SVG originale, squadre inventate, suoni generati da codice.
 
