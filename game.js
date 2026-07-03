@@ -620,18 +620,19 @@ function drawPlayer(parent, x, y, jersey, scale = 1, skin = '#ffd9b0') {
 let currentGame = 'tab'; // 'tab' | 'verb'
 
 const GAME_META = {
-  tab:  { title: '✖️ Tabelline', career: '🏆 Mondiale delle Tabelline', friendlyHint: 'Partita libera: scegli tu quali tabelline allenare.', selHint: 'Quali tabelline vuoi allenare?' },
-  verb: { title: '📖 Verbi', career: '🏆 Mondiale dei Verbi', friendlyHint: 'Partita libera: scegli tu quali tempi verbali allenare.', selHint: 'Quali tempi verbali vuoi allenare?' },
+  tab:  { title: '✖️ Tabelline', career: '🏆 Mondiale delle Tabelline', selHint: 'Quali tabelline vuoi allenare?' },
+  verb: { title: '📖 Verbi', career: '🏆 Mondiale dei Verbi', selHint: 'Quali tempi verbali vuoi allenare?' },
 };
 
 function openGameMenu(game) {
   currentGame = game;
   $('gm-title').textContent = GAME_META[game].title;
-  $('gm-friendly-hint').textContent = GAME_META[game].friendlyHint;
+  renderSelection();
   show('gamemenu');
 }
 
-function renderFriendly() {
+/* i chip di selezione (quali tabelline / quali tempi) — sempre visibili nel menu del gioco */
+function renderSelection() {
   $('friendly-hint').textContent = GAME_META[currentGame].selHint;
   const box = $('sel-chips');
   box.innerHTML = '';
@@ -1198,9 +1199,9 @@ async function startMatch(game, teamIdx, friendly = false) {
   }
 
   if (match.quit) {
+    // abbandono = si torna dritti al menu principale (facile cambiare gioco)
     match.active = false;
-    if (match.friendly) show('gamemenu');
-    else { renderCareer(); show('career'); }
+    show('home');
     return;
   }
 
@@ -1735,7 +1736,7 @@ function renderCode() {
 
 /* ---------------- avvio ---------------- */
 function updateSoundBtn() {
-  $('btn-sound').textContent = state.sound ? '🔊 Suoni: ON' : '🔇 Suoni: OFF';
+  $('btn-sound').innerHTML = state.sound ? '🔊<small>Suoni ON</small>' : '🔇<small>Suoni OFF</small>';
   Sfx.setEnabled(state.sound);
 }
 
@@ -1772,12 +1773,11 @@ function init() {
   });
 
   $('btn-mondiale').addEventListener('click', () => { Sfx.click(); renderCareer(); show('career'); });
-  $('btn-friendly').addEventListener('click', () => { Sfx.click(); renderFriendly(); show('friendly'); });
   $('btn-sel-all').addEventListener('click', () => {
     Sfx.click();
     state.sel[currentGame] = currentGame === 'tab' ? [2, 3, 4, 5, 6, 7, 8, 9, 10] : VERB_GROUPS.map((g, i) => i);
     saveLocal();
-    renderFriendly();
+    renderSelection();
   });
   $('btn-friendly-play').addEventListener('click', () => {
     Sfx.click();
@@ -1794,6 +1794,7 @@ function init() {
   });
 
   $('btn-result-review').addEventListener('click', () => { Sfx.click(); reviewErrors(); });
+  $('btn-result-home').addEventListener('click', () => { Sfx.click(); show('home'); });
   $('btn-result-career').addEventListener('click', () => {
     Sfx.click();
     if (match.friendly) show('gamemenu');

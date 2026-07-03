@@ -184,8 +184,60 @@ body {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); box-shadow: 0 4px 22px rgba(242,167,27,0.7); }
 }
-.home-buttons { display: flex; flex-direction: column; gap: 13px; width: min(300px, 80%); }
+.home-buttons { display: flex; flex-direction: column; gap: 13px; width: min(330px, 88%); }
 .credits { font-size: 0.72rem; opacity: 0.45; line-height: 1.5; }
+
+/* card dei due giochi: grandi e riconoscibili */
+.game-card {
+  display: flex; align-items: center; gap: 14px;
+  border: none;
+  border-radius: 20px;
+  padding: 16px 18px;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 6px 0 rgba(0,0,0,0.35);
+  transition: transform 0.06s, box-shadow 0.06s;
+}
+.game-card:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.35); }
+.gc-green  { background: linear-gradient(135deg, #2ecc71, var(--green-dark)); }
+.gc-purple { background: linear-gradient(135deg, #ab6fd0, #7d3ea6); }
+.gc-emoji { font-size: 2.2rem; flex-shrink: 0; }
+.gc-txt { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.gc-txt b { font-size: 1.35rem; font-weight: 900; }
+.gc-txt small { font-size: 0.78rem; opacity: 0.85; font-weight: 600; }
+.gc-arrow { font-size: 1.1rem; opacity: 0.7; }
+
+/* funzioni di servizio: piccole, raggruppate, diverse dai giochi */
+.util-row { display: flex; gap: 10px; margin-top: 4px; }
+.btn-util {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  background: var(--navy2);
+  border: 1.5px solid #2c4a6e;
+  border-radius: 16px;
+  padding: 11px 4px;
+  color: var(--white);
+  font-size: 1.3rem;
+  cursor: pointer;
+  transition: transform 0.06s, border-color 0.15s;
+}
+.btn-util:active { transform: scale(0.95); }
+.btn-util small { font-size: 0.66rem; font-weight: 800; opacity: 0.75; letter-spacing: 0.5px; }
+
+/* divisore "oppure" nel menu gioco */
+.gm-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 16px 0 10px;
+  font-size: 0.72rem; font-weight: 900; letter-spacing: 2px;
+  text-transform: uppercase; opacity: 0.55;
+}
+.gm-divider::before, .gm-divider::after {
+  content: ''; flex: 1; height: 1px; background: #2c4a6e;
+}
+
+.result-row { display: flex; gap: 10px; width: 100%; }
+.result-row .btn { flex: 1; }
 
 /* ============ topbar ============ */
 .topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-shrink: 0; }

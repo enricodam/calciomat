@@ -33,16 +33,26 @@
       <div class="flm-badge">✨ UN GIOCO <b>FLM</b> ✨</div>
     </div>
     <div class="home-buttons">
-      <button id="btn-tab" class="btn btn-big btn-green">✖️ Tabelline</button>
-      <button id="btn-verb" class="btn btn-big btn-purple">📖 Verbi</button>
-      <button id="btn-trophies" class="btn btn-blue">🏆 Trofei</button>
-      <button id="btn-code" class="btn btn-blue">💾 Salvataggio</button>
-      <button id="btn-sound" class="btn btn-dark">🔊 Suoni: ON</button>
+      <button id="btn-tab" class="game-card gc-green">
+        <span class="gc-emoji">✖️</span>
+        <span class="gc-txt"><b>Tabelline</b><small>Il Mondiale della matematica</small></span>
+        <span class="gc-arrow">▶</span>
+      </button>
+      <button id="btn-verb" class="game-card gc-purple">
+        <span class="gc-emoji">📖</span>
+        <span class="gc-txt"><b>Verbi</b><small>Il Mondiale della grammatica</small></span>
+        <span class="gc-arrow">▶</span>
+      </button>
+      <div class="util-row">
+        <button id="btn-trophies" class="btn-util">🏆<small>Trofei</small></button>
+        <button id="btn-code" class="btn-util">💾<small>Salvataggio</small></button>
+        <button id="btn-sound" class="btn-util">🔊<small>Suoni ON</small></button>
+      </div>
     </div>
     <p class="credits">Gioco libero e gratuito per imparare tabelline e verbi.<br>Nessuna pubblicità, nessun dato raccolto.</p>
   </section>
 
-  <!-- ============ MENU GIOCO ============ -->
+  <!-- ============ MENU GIOCO (Mondiale + selezione allenamento) ============ -->
   <section id="screen-gamemenu" class="screen">
     <header class="topbar">
       <button class="btn-back" data-back="home">←</button>
@@ -51,22 +61,13 @@
     <div class="gm-buttons">
       <button id="btn-mondiale" class="btn btn-big btn-green">🏆 Mondiale</button>
       <p class="gm-hint">Il torneo: batti tutte le squadre e alza la coppa!</p>
-      <button id="btn-friendly" class="btn btn-blue">🤝 Amichevole</button>
-      <p class="gm-hint" id="gm-friendly-hint">Partita libera: scegli tu quali tabelline allenare.</p>
     </div>
-  </section>
-
-  <!-- ============ AMICHEVOLE (selezione) ============ -->
-  <section id="screen-friendly" class="screen">
-    <header class="topbar">
-      <button class="btn-back" data-back="gamemenu">←</button>
-      <h2>🤝 Amichevole</h2>
-    </header>
-    <p class="career-hint" id="friendly-hint">Scegli cosa allenare (puoi selezionarne più di una):</p>
+    <div class="gm-divider"><span>oppure allenati tu</span></div>
+    <p class="career-hint" id="friendly-hint">Quali tabelline vuoi allenare?</p>
     <div id="sel-chips" class="sel-chips"></div>
     <div class="sel-actions">
       <button id="btn-sel-all" class="btn btn-dark">✔ Tutte</button>
-      <button id="btn-friendly-play" class="btn btn-green">⚽ Gioca</button>
+      <button id="btn-friendly-play" class="btn btn-blue">🤝 Amichevole</button>
     </div>
   </section>
 
@@ -217,7 +218,10 @@
       <div id="result-stars" class="result-stars"></div>
       <button id="btn-result-review" class="btn btn-purple hidden">📝 Ripeti gli errori</button>
       <button id="btn-result-career" class="btn btn-big btn-green">Avanti</button>
-      <button id="btn-result-replay" class="btn btn-blue">🔁 Rigioca</button>
+      <div class="result-row">
+        <button id="btn-result-replay" class="btn btn-blue">🔁 Rigioca</button>
+        <button id="btn-result-home" class="btn btn-dark">🏠 Menu</button>
+      </div>
     </div>
   </section>
 

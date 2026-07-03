@@ -1,5 +1,5 @@
 /* CalcioMat — service worker: gioco disponibile anche offline */
-const CACHE = 'calciomat-v5';
+const CACHE = 'calciomat-v6';
 const ASSETS = [
   './',
   './index.html',
