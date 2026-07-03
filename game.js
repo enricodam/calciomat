@@ -337,7 +337,7 @@ function freshState() {
       tab: { career: freshCareer(), facts: tabFacts },
       verb: { career: freshCareer(), facts: verbFacts },
     },
-    sel: { tab: [2, 3, 4, 5, 6, 7, 8, 9, 10], verb: [0] },
+    sel: { tab: [2, 3, 4, 5, 6, 7, 8, 9, 10], verb: ['Indicativo'] },
   };
 }
 let state = freshState();
@@ -350,7 +350,14 @@ function loadLocal() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return false;
     const s = JSON.parse(raw);
-    if (s && s.v === 2 && s.games) { state = Object.assign(freshState(), s); return true; }
+    if (s && s.v === 2 && s.games) {
+      state = Object.assign(freshState(), s);
+      // la selezione dei verbi ora è per modo: sistema i salvataggi vecchi (indici numerici)
+      if (!Array.isArray(state.sel.verb) || state.sel.verb.some(v => typeof v !== 'string')) {
+        state.sel.verb = ['Indicativo'];
+      }
+      return true;
+    }
     if (s && s.v === 1 && s.facts && s.career) {
       // migrazione dal vecchio salvataggio (solo tabelline)
       const f = freshState();
@@ -621,7 +628,7 @@ let currentGame = 'tab'; // 'tab' | 'verb'
 
 const GAME_META = {
   tab:  { title: '✖️ Tabelline', career: '🏆 Mondiale delle Tabelline', selHint: 'Quali tabelline vuoi allenare?' },
-  verb: { title: '📖 Verbi', career: '🏆 Mondiale dei Verbi', selHint: 'Quali tempi verbali vuoi allenare?' },
+  verb: { title: '📖 Verbi', career: '🏆 Mondiale dei Verbi', selHint: 'Quali modi vuoi allenare?' },
 };
 
 function openGameMenu(game) {
@@ -638,7 +645,7 @@ function renderSelection() {
   box.innerHTML = '';
   const items = currentGame === 'tab'
     ? [2, 3, 4, 5, 6, 7, 8, 9, 10].map(t => ({ id: t, label: `Tabellina del ${t}` }))
-    : VERB_GROUPS.map((g, i) => ({ id: i, label: g.name }));
+    : MODI.map(m => ({ id: m, label: m }));
   items.forEach(item => {
     const c = document.createElement('button');
     c.className = 'chip' + (state.sel[currentGame].includes(item.id) ? ' sel' : '');
@@ -1080,7 +1087,7 @@ async function startMatch(game, teamIdx, friendly = false) {
       review = TEAMS.slice(0, Math.min(career.unlocked, 9)).map(t => t.table).filter(t => t !== team.table);
     }
   } else {
-    if (friendly) { focus = state.sel.verb.flatMap(i => VERB_GROUPS[i].keys); review = []; }
+    if (friendly) { focus = TEMPI.filter(t => state.sel.verb.includes(t.modo)).map(t => t.key); review = []; }
     else {
       focus = VERB_GROUPS[teamIdx].keys.slice();
       if (teamIdx === 8) review = VERB_GROUPS.slice(0, 8).flatMap(g => g.keys); // finale: ripasso di tutto
@@ -1775,7 +1782,7 @@ function init() {
   $('btn-mondiale').addEventListener('click', () => { Sfx.click(); renderCareer(); show('career'); });
   $('btn-sel-all').addEventListener('click', () => {
     Sfx.click();
-    state.sel[currentGame] = currentGame === 'tab' ? [2, 3, 4, 5, 6, 7, 8, 9, 10] : VERB_GROUPS.map((g, i) => i);
+    state.sel[currentGame] = currentGame === 'tab' ? [2, 3, 4, 5, 6, 7, 8, 9, 10] : [...MODI];
     saveLocal();
     renderSelection();
   });

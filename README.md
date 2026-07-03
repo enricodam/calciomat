@@ -7,7 +7,7 @@ Gioco web gratuito per imparare le **tabelline dal 2 al 10** e le **coniugazioni
 ## Come si gioca
 
 - **Due giochi, stesso campo**: ✖️ Tabelline e 📖 Verbi (tutte le coniugazioni attive regolari — modi e tempi semplici e composti — più essere e avere).
-- **Due modalità**: il **Mondiale** (fase a gironi, poi sedicesimi, ottavi, quarti, semifinale e finale) e l'**Amichevole**, dove scegli tu quali tabelline o quali tempi verbali allenare.
+- **Due modalità**: il **Mondiale** (fase a gironi, poi sedicesimi, ottavi, quarti, semifinale e finale) e l'**Amichevole**, dove scegli tu quali tabelline o quali **modi verbali** allenare (l'allenamento copre tutti i tempi del modo scelto).
 - **Tabelline**: scrivi il risultato col tastierino, cifra per cifra, prima che scada la barra del tempo.
 - **Verbi**: in un verso ti chiede ad es. "indicativo presente, 2ª persona singolare di DORMIRE" → scegli il pronome e scrivi "dormi"; nell'altro ti mostra «ha parlato» → indichi modo, tempo e persona. Le forme ambigue (es. "mangiamo": indicativo, congiuntivo o imperativo) accettano tutte le risposte valide. Niente timer: per coniugare c'è tutto il tempo che serve.
 - Risposta giusta = **disegni il passaggio** col dito: se la traiettoria passa vicino a un difensore viene **intercettata** — serve l'effetto!
