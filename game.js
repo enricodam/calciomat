@@ -567,6 +567,17 @@ function el(tag, attrs, parent) {
 function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   $('screen-' + id).classList.add('active');
+  if (id === 'home') updateResumeBtn();
+}
+
+/* pulsante "Riprendi la partita" in home */
+function updateResumeBtn() {
+  const b = $('btn-resume');
+  const p = state.pausedMatch;
+  if (!p) { b.classList.add('hidden'); return; }
+  const t = TEAMS[p.teamIdx];
+  b.textContent = `▶ Riprendi: ${p.score[0]}-${p.score[1]} contro ${t.name} ${t.crest} (${Math.min(p.qi * MIN_PER_QUESTION + 1, 90)}')`;
+  b.classList.remove('hidden');
 }
 
 function cameraCut() {
@@ -587,7 +598,7 @@ function toast(msg, ms = 2200) {
   toastTimer = setTimeout(() => t.classList.add('hidden'), ms);
 }
 
-function modal({ title, text, input = false, okText = 'OK', cancel = true, placeholder = '' }) {
+function modal({ title, text, input = false, okText = 'OK', cancel = true, cancelText = 'Annulla', placeholder = '' }) {
   return new Promise(resolve => {
     const m = $('modal'), inp = $('modal-input');
     $('modal-title').textContent = title;
@@ -595,6 +606,7 @@ function modal({ title, text, input = false, okText = 'OK', cancel = true, place
     inp.classList.toggle('hidden', !input);
     inp.value = ''; inp.placeholder = placeholder;
     $('modal-ok').textContent = okText;
+    $('modal-cancel').textContent = cancelText;
     $('modal-cancel').style.display = cancel ? '' : 'none';
     m.classList.remove('hidden');
     if (input) setTimeout(() => inp.focus(), 100);
@@ -818,28 +830,59 @@ function rememberError(err) {
   if (!match.errors.some(e => JSON.stringify(e) === id)) match.errors.push(err);
 }
 
-let timerHandle = null;
+let timerHandle = null, timerEnd = 0, timerCb = null, timerPaused = 0;
+
+function freezeTimerBar() {
+  const bar = $('timer-bar');
+  const w = getComputedStyle(bar).transform;
+  bar.style.transition = 'none';
+  bar.style.transform = w === 'none' ? 'scaleX(1)' : w; // congela dov'è
+}
 
 function startTimer(ms, onTimeout) {
   const wrap = $('timer-bar-wrap');
   wrap.classList.toggle('hidden', !ms);
-  if (!ms) return; // niente timer (gioco dei verbi): tutto il tempo che serve
+  timerPaused = 0;
+  if (!ms) { timerCb = null; return; } // niente timer (verbi/no-stop): tutto il tempo che serve
+  timerCb = onTimeout;
   const bar = $('timer-bar');
   bar.style.transition = 'none';
   bar.style.transform = 'scaleX(1)';
   void bar.offsetWidth; // reflow: fa ripartire l'animazione
   bar.style.transition = `transform ${ms}ms linear`;
   bar.style.transform = 'scaleX(0)';
+  timerEnd = performance.now() + ms;
   timerHandle = setTimeout(onTimeout, ms);
 }
 function stopTimer() {
   clearTimeout(timerHandle);
   timerHandle = null;
-  const bar = $('timer-bar');
-  const w = getComputedStyle(bar).transform;
-  bar.style.transition = 'none';
-  bar.style.transform = w === 'none' ? 'scaleX(1)' : w; // congela dov'è
+  timerCb = null;
+  timerPaused = 0;
+  freezeTimerBar();
 }
+/* pausa/ripresa del timer (menu pausa) senza perdere il tempo rimanente */
+function pauseTimer() {
+  if (!timerHandle) return;
+  clearTimeout(timerHandle);
+  timerHandle = null;
+  timerPaused = Math.max(0, timerEnd - performance.now());
+  freezeTimerBar();
+}
+function resumeTimer() {
+  if (!(timerPaused > 0) || !timerCb) return;
+  const bar = $('timer-bar');
+  void bar.offsetWidth;
+  bar.style.transition = `transform ${timerPaused}ms linear`;
+  bar.style.transform = 'scaleX(0)';
+  timerEnd = performance.now() + timerPaused;
+  timerHandle = setTimeout(timerCb, timerPaused);
+  timerPaused = 0;
+}
+
+/* per uscire all'istante da una domanda o da una scena in corso */
+let questionAbort = null;
+let sceneAbort = null;
 
 function setComment(txt) { $('commentary').textContent = txt; }
 
@@ -878,10 +921,22 @@ function askTabQuestion(preset) {
     const keys = [...document.querySelectorAll('.key')];
     keys.forEach(k => { k.disabled = false; });
 
+    questionAbort = () => {
+      if (settled) return;
+      settled = true;
+      stopTimer();
+      document.removeEventListener('keydown', keyHandler);
+      keyHandler = null;
+      keys.forEach(k => { k.disabled = true; });
+      questionAbort = null;
+      resolve({ correct: false, timedOut: false, aborted: true });
+    };
+
     const finish = (correct, timedOut = false) => {
       if (settled) return;
       settled = true;
       stopTimer();
+      questionAbort = null;
       document.removeEventListener('keydown', keyHandler);
       keyHandler = null;
       keys.forEach(k => { k.disabled = true; });
@@ -954,10 +1009,20 @@ function askVerbQuestion(preset) {
     const t0 = performance.now();
     let cleanupExtra = () => {};
 
+    questionAbort = () => {
+      if (settled) return;
+      settled = true;
+      stopTimer();
+      cleanupExtra();
+      questionAbort = null;
+      resolve({ correct: false, timedOut: false, aborted: true });
+    };
+
     const finish = (correct, timedOut, solutionHtml, cardHtml) => {
       if (settled) return;
       settled = true;
       stopTimer();
+      questionAbort = null;
       cleanupExtra();
       updateFact('verb', q.tempoKey, correct, performance.now() - t0 < 9000);
       if (correct) {
@@ -1074,13 +1139,15 @@ async function overlayCard(roundTxt, subTxt, team, ms = 2600) {
   oc.classList.add('hidden');
 }
 
-/* prepara e gioca una partita (mondiale o amichevole) */
-async function startMatch(game, teamIdx, friendly = false) {
+/* prepara e gioca una partita (mondiale o amichevole); resume = riprende una partita sospesa */
+async function startMatch(game, teamIdx, friendly = false, resume = null) {
   const team = TEAMS[teamIdx];
   const career = state.games[game].career;
 
   let focus, review;
-  if (game === 'tab') {
+  if (resume) {
+    focus = resume.focus; review = resume.review;
+  } else if (game === 'tab') {
     if (friendly) { focus = [...state.sel.tab]; review = []; }
     else {
       focus = [team.table];
@@ -1095,30 +1162,38 @@ async function startMatch(game, teamIdx, friendly = false) {
     }
   }
 
+  state.pausedMatch = null; // una nuova partita (o la ripresa) consuma la sospensione
+  saveLocal();
+
   Object.assign(match, {
     active: true, game, teamIdx, friendly, focus, review,
     timer: game === 'verb' ? 0 : (friendly ? FRIENDLY_TIMER_TAB : TIMERS_TAB[teamIdx]),
     oppGoalChance: 0.5 + teamIdx * 0.03,
-    score: [0, 0], minute: 0, zone: 2, poss: 'you', quit: false,
-    errors: [], reviewing: false,
+    score: resume ? [...resume.score] : [0, 0],
+    minute: 0,
+    zone: resume ? resume.zone : 2,
+    poss: resume ? resume.poss : 'you',
+    quit: false, drill: false, inPens: false, qi: resume ? resume.qi : 0,
+    errors: resume ? resume.errors.map(e => ({ ...e })) : [], reviewing: false,
   });
 
   $('sb-you-name').textContent = state.name || 'Tu';
   $('sb-opp-name').textContent = team.name;
   $('sb-opp-crest').textContent = team.crest;
   updateScoreboard();
-  setPossession('you');
-  setBall(2, false);
-  setComment('Fischio d\'inizio!');
+  setPossession(match.poss);
+  setBall(match.zone, false);
+  setComment(resume ? 'Si riprende!' : 'Fischio d\'inizio!');
   show('match');
   Sfx.whistle();
   await overlayCard(
-    friendly ? 'AMICHEVOLE' : ROUNDS[teamIdx].short,
-    `${friendly ? (game === 'tab' ? 'Tabelline scelte da te' : 'Tempi scelti da te') : roundSubject(game, teamIdx)} · ${team.stadium}`,
+    resume ? 'SI RIPRENDE!' : friendly ? 'AMICHEVOLE' : ROUNDS[teamIdx].short,
+    `${friendly ? (game === 'tab' ? 'Tabelline scelte da te' : 'Modi scelti da te') : roundSubject(game, teamIdx)} · ${team.stadium}`,
     team
   );
 
-  for (let qi = 0; qi < QUESTIONS_PER_MATCH && !match.quit; qi++) {
+  for (let qi = match.qi; qi < QUESTIONS_PER_MATCH && !match.quit; qi++) {
+    match.qi = qi;
     if (qi === Math.floor(QUESTIONS_PER_MATCH / 2)) {
       Sfx.whistle();
       await overlayCard('SECONDO TEMPO', 'Si riparte! Forza!', team, 1800);
@@ -1218,12 +1293,14 @@ async function startMatch(game, teamIdx, friendly = false) {
 
   if (match.score[0] === match.score[1]) {
     await penalties(team);
+    if (match.quit) { match.active = false; show('home'); return; }
   }
   await endMatch(team);
 }
 
 /* ---------------- rigori ---------------- */
 async function penalties(team) {
+  match.inPens = true;
   await overlayCard('CALCI DI RIGORE', 'Pareggio! Si decide dal dischetto! 😱', team, 2400);
   const pens = [0, 0];
   let round = 0;
@@ -1238,6 +1315,7 @@ async function penalties(team) {
       await sleep(700);
       cameraCut();
       mine = await runShot(true);
+      if (match.quit) return;
       cameraCut();
     } else {
       await sleep(1500);
@@ -1261,6 +1339,7 @@ async function penalties(team) {
   }
   if (pens[0] > pens[1]) match.score[0]++;
   else match.score[1]++;
+  match.inPens = false;
 }
 
 /* ---------------- fine partita ---------------- */
@@ -1435,6 +1514,7 @@ function collectTrace(svg, tracePath, startPt, startRadius, minLen, onTooShort) 
       }
       done = true;
       cleanup();
+      sceneAbort = null;
       resolve(pts);
     };
     const cleanup = () => {
@@ -1442,6 +1522,13 @@ function collectTrace(svg, tracePath, startPt, startRadius, minLen, onTooShort) 
       svg.removeEventListener('pointermove', onMove);
       svg.removeEventListener('pointerup', onUp);
       svg.removeEventListener('pointercancel', onUp);
+    };
+    sceneAbort = () => {
+      if (done) return;
+      done = true;
+      cleanup();
+      sceneAbort = null;
+      resolve(null);
     };
     svg.addEventListener('pointerdown', onDown);
     svg.addEventListener('pointermove', onMove);
@@ -1553,7 +1640,7 @@ function runPass(zone, teamIdx) {
 
     const pts = await collectTrace(svg, trace, PASS_BALL, 105, 60,
       () => { $('pass-msg').innerHTML = 'Parti dalla palla e disegna fino a un compagno! 👆'; });
-    if (match.quit) return resolve('quit');
+    if (!pts || match.quit) return resolve('quit');
     $('pass-msg').classList.add('hidden');
 
     const { p0, p1, p2 } = traceToBezier(pts, null);
@@ -1682,7 +1769,7 @@ function runShot(penalty) {
 
     const pts = await collectTrace(svg, $('trace'), SHOT.ballStart, 110, 80,
       () => { $('shot-msg').innerHTML = 'Traccia più lunga, verso la porta! 👆'; });
-    if (match.quit) return resolve('quit');
+    if (!pts || match.quit) return resolve('quit');
     $('shot-msg').classList.add('hidden');
 
     const { p0, p1, p2 } = traceToBezier(pts, raw => ({ x: raw.x, y: Math.max(265, Math.min(480, raw.y)) }));
@@ -1732,6 +1819,60 @@ function runShot(penalty) {
     await sleep(result === 'goal' ? 2100 : 1600);
     resolve(result);
   });
+}
+
+/* ---------------- esercizi no-stop (senza calcio) ---------------- */
+async function startDrill(game) {
+  const focus = game === 'tab'
+    ? [...state.sel.tab]
+    : TEMPI.filter(t => state.sel.verb.includes(t.modo)).map(t => t.key);
+
+  Object.assign(match, {
+    active: true, game, teamIdx: 0, friendly: true, drill: true,
+    focus, review: [], timer: 0,
+    score: [0, 0], minute: 0, zone: 2, poss: 'you',
+    quit: false, inPens: false, qi: 0,
+    errors: [], reviewing: true, // niente lista errori: la soluzione arriva subito
+  });
+
+  let right = 0, wrong = 0, streak = 0, best = 0;
+  $('screen-match').classList.add('drill');
+  $('sb-you-crest').textContent = '🎯';
+  $('sb-you-name').textContent = 'No-stop';
+  $('sb-opp-crest').textContent = game === 'tab' ? '✖️' : '📖';
+  $('sb-opp-name').textContent = state.name || 'Tu';
+  const updateHud = () => {
+    $('sb-score').innerHTML = `<span style="color:#7bed9f">✔ ${right}</span> · <span style="color:#ff8f82">✘ ${wrong}</span>`;
+    const tot = right + wrong;
+    $('sb-minute').textContent = streak >= 3 ? `🔥 ${streak} di fila` : tot ? `${Math.round(right * 100 / tot)}%` : '—';
+  };
+  updateHud();
+  setComment('Esercizi no-stop: quanti ne fai? 💪');
+  show('match');
+
+  while (!match.quit) {
+    const res = await askQuestion();
+    if (match.quit || res.aborted) break;
+    if (res.correct) { right++; streak++; best = Math.max(best, streak); }
+    else { wrong++; streak = 0; }
+    updateHud();
+    setComment(res.correct
+      ? (streak % 5 === 0 ? `🔥 ${streak} di fila! Sei scatenato!` : ['Giusto!', 'Perfetto!', 'Grande!', 'Che bravo!'][right % 4])
+      : 'Capita! La prossima è tua.');
+    await sleep(600);
+  }
+
+  $('screen-match').classList.remove('drill');
+  Object.assign(match, { active: false, drill: false, reviewing: false });
+  const tot = right + wrong;
+  if (tot > 0) {
+    await modal({
+      title: '🎯 Allenamento finito!',
+      text: `Esercizi fatti: ${tot}\n✔ Giusti: ${right}\n✘ Sbagliati: ${wrong}\n🎯 Precisione: ${Math.round(right * 100 / tot)}%\n🔥 Serie più lunga: ${best}`,
+      okText: 'Grande!', cancel: false,
+    });
+  }
+  show('gamemenu');
 }
 
 /* ---------------- schermata codice ---------------- */
@@ -1795,10 +1936,42 @@ function init() {
   document.querySelectorAll('.btn-back').forEach(b =>
     b.addEventListener('click', () => { Sfx.click(); show(b.dataset.back); }));
 
-  $('btn-quit').addEventListener('click', async () => {
-    const ok = await modal({ title: 'Abbandoni la partita?', text: 'Quello che hai imparato resta salvato, ma la partita non conta.', okText: 'Sì, esci' });
-    if (ok) { match.quit = true; stopTimer(); }
+  // menu pausa: da qualunque punto della partita, uscita immediata
+  const onQuitPressed = async () => {
+    if (!match.active && !match.reviewing) return;
+    Sfx.click();
+    pauseTimer();
+    const canSave = match.active && !match.drill && !match.reviewing && !match.inPens;
+    const text = match.drill ? 'Esci dall\'allenamento? Vedrai il tuo punteggio.'
+      : match.reviewing ? 'Esci dal ripasso? Potrai rifarlo dal risultato della partita.'
+      : match.inPens ? 'Ai rigori la partita non si può sospendere: se esci, non conta.'
+      : 'La partita viene salvata: la riprenderai dalla home quando vuoi.';
+    const exit = await modal({ title: '⏸ Pausa', text, okText: '🏠 Esci', cancelText: '▶ Continua' });
+    if (!exit) { resumeTimer(); return; }
+    match.quit = true;
+    stopTimer();
+    if (canSave) {
+      state.pausedMatch = {
+        game: match.game, teamIdx: match.teamIdx, friendly: match.friendly,
+        score: [...match.score], qi: match.qi, zone: match.zone, poss: match.poss,
+        focus: [...match.focus], review: [...match.review],
+        errors: match.errors.map(e => ({ ...e })),
+      };
+      saveLocal();
+    }
+    if (questionAbort) questionAbort();
+    if (sceneAbort) sceneAbort();
+  };
+  $('btn-quit').addEventListener('click', onQuitPressed);
+  document.querySelectorAll('.scene-quit').forEach(b => b.addEventListener('click', onQuitPressed));
+
+  $('btn-resume').addEventListener('click', () => {
+    Sfx.unlock(); Sfx.click();
+    const p = state.pausedMatch;
+    if (p) startMatch(p.game, p.teamIdx, p.friendly, p);
   });
+
+  $('btn-drill').addEventListener('click', () => { Sfx.click(); startDrill(currentGame); });
 
   $('btn-result-review').addEventListener('click', () => { Sfx.click(); reviewErrors(); });
   $('btn-result-home').addEventListener('click', () => { Sfx.click(); show('home'); });

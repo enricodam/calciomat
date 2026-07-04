@@ -530,8 +530,48 @@ body {
 .solution-text b { color: var(--yellow); font-size: 1.5rem; }
 .solution-text small { font-size: 0.88rem; opacity: 0.85; display: block; margin-top: 6px; font-weight: 600; }
 
-/* modalità ripasso: niente campo, si vede solo l'esercizio */
-#screen-match.review .field-wrap { display: none; }
+/* modalità ripasso e no-stop: niente campo, si vede solo l'esercizio */
+#screen-match.review .field-wrap,
+#screen-match.drill .field-wrap { display: none; }
+
+/* riprendi la partita sospesa */
+.btn-resume {
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f2a71b, #d68910);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 900;
+  padding: 13px 16px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 rgba(0,0,0,0.35);
+  transition: transform 0.06s, box-shadow 0.06s;
+  animation: badgeGlow 2.2s ease-in-out infinite;
+}
+.btn-resume:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,0.35); }
+
+/* pausa dalle scene di passaggio e tiro */
+.scene-quit {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  width: 38px; height: 38px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(14,27,46,0.65);
+  color: #ff8f82;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.btn-drill {
+  width: 100%;
+  margin-top: 10px;
+  display: flex; flex-direction: column; gap: 2px; align-items: center;
+}
+.btn-drill small { font-size: 0.72rem; font-weight: 700; opacity: 0.85; }
 
 /* stacco "telecamera" */
 .flash {
