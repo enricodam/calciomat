@@ -581,12 +581,24 @@ body {
   z-index: 5;
 }
 
-.btn-drill {
-  width: 100%;
-  margin-top: 10px;
-  display: flex; flex-direction: column; gap: 2px; align-items: center;
+/* pannello "allenati tu": la selezione governa Amichevole e No-stop */
+.train-panel {
+  border: 1.5px solid #2c4a6e;
+  border-radius: 18px;
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 11px;
+  margin-bottom: 20px;
 }
-.btn-drill small { font-size: 0.72rem; font-weight: 700; opacity: 0.85; }
+.train-step { font-size: 0.9rem; font-weight: 700; opacity: 0.9; }
+.train-step b { color: var(--yellow); }
+.train-panel .sel-chips { margin: 0; }
+.btn-sel-all { padding: 10px; font-size: 0.9rem; }
+.btn-train {
+  display: flex; flex-direction: column; gap: 2px; align-items: center;
+  padding: 12px 8px;
+  font-size: 1.05rem;
+}
+.btn-train small { font-size: 0.7rem; font-weight: 700; opacity: 0.85; }
 
 /* stacco "telecamera" */
 .flash {

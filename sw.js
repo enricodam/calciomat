@@ -1,6 +1,6 @@
 /* CalcioMat — service worker: gioco disponibile anche offline.
    NB: a ogni rilascio aggiornare INSIEME: CACHE qui, APP_VERSION in game.js, version.json */
-const CACHE = 'calciomat-v10';
+const CACHE = 'calciomat-v11';
 const ASSETS = [
   './',
   './index.html',

@@ -6,7 +6,7 @@
 'use strict';
 
 // NB: a ogni rilascio aggiornare INSIEME: APP_VERSION, CACHE in sw.js, version.json
-const APP_VERSION = 10;
+const APP_VERSION = 11;
 
 /* ---------------- squadre (tutte inventate) e turni ---------------- */
 const TEAMS = [

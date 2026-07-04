@@ -66,13 +66,16 @@
       <p class="gm-hint">Il torneo: batti tutte le squadre e alza la coppa!</p>
     </div>
     <div class="gm-divider"><span>oppure allenati tu</span></div>
-    <p class="career-hint" id="friendly-hint">Quali tabelline vuoi allenare?</p>
-    <div id="sel-chips" class="sel-chips"></div>
-    <div class="sel-actions">
-      <button id="btn-sel-all" class="btn btn-dark">✔ Tutte</button>
-      <button id="btn-friendly-play" class="btn btn-blue">🤝 Amichevole</button>
+    <div class="train-panel">
+      <p class="train-step"><b>1.</b> <span id="friendly-hint">Quali tabelline vuoi allenare?</span></p>
+      <div id="sel-chips" class="sel-chips"></div>
+      <button id="btn-sel-all" class="btn btn-dark btn-sel-all">✔ Seleziona tutte</button>
+      <p class="train-step"><b>2.</b> Scegli come allenarti:</p>
+      <div class="sel-actions">
+        <button id="btn-friendly-play" class="btn btn-blue btn-train">🤝 Amichevole<small>partita di calcio</small></button>
+        <button id="btn-drill" class="btn btn-purple btn-train">🎯 No-stop<small>solo esercizi</small></button>
+      </div>
     </div>
-    <button id="btn-drill" class="btn btn-purple btn-drill">🎯 Esercizi no-stop <small>(solo domande, senza partita)</small></button>
   </section>
 
   <!-- ============ MONDIALE ============ -->
