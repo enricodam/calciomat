@@ -183,6 +183,21 @@ body {
   50% { transform: scale(1.04); }
 }
 
+.btn-update {
+  margin-top: 2px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2ecc71, var(--green-dark));
+  color: #fff;
+  padding: 12px 14px;
+  font-size: 0.92rem;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.35);
+  animation: badgeGlow 2s ease-in-out infinite;
+}
+.btn-update:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.35); }
+
 .btn-install {
   margin-top: 2px;
   background: none;

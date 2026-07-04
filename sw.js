@@ -1,5 +1,6 @@
-/* CalcioMat — service worker: gioco disponibile anche offline */
-const CACHE = 'calciomat-v9';
+/* CalcioMat — service worker: gioco disponibile anche offline.
+   NB: a ogni rilascio aggiornare INSIEME: CACHE qui, APP_VERSION in game.js, version.json */
+const CACHE = 'calciomat-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -11,6 +12,7 @@ const ASSETS = [
   './icon-180.png',
   './icon-192.png',
   './icon-512.png',
+  './version.json',
 ];
 
 self.addEventListener('install', (e) => {
@@ -27,6 +29,11 @@ self.addEventListener('activate', (e) => {
 
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
+  // version.json: sempre prima dalla rete, così l'app scopre gli aggiornamenti
+  if (new URL(e.request.url).pathname.endsWith('/version.json')) {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then((hit) => {
       const fetched = fetch(e.request)

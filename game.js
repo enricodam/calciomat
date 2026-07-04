@@ -5,6 +5,9 @@
    ============================================================ */
 'use strict';
 
+// NB: a ogni rilascio aggiornare INSIEME: APP_VERSION, CACHE in sw.js, version.json
+const APP_VERSION = 10;
+
 /* ---------------- squadre (tutte inventate) e turni ---------------- */
 const TEAMS = [
   { crest: '🐣', name: 'Pulcini FC',        color: '#f7c948', table: 2,  stadium: 'Stadio del Pulcino' },
@@ -2009,6 +2012,44 @@ function init() {
     fb.textContent = `✅ Bentornato, ${state.name}!`;
     fb.className = 'code-feedback ok';
     toast(`Carriera di ${state.name} caricata! ⚽`);
+  });
+
+  // ---- versione e aggiornamento ----
+  $('app-version').textContent = 'v' + APP_VERSION;
+
+  async function checkForUpdate() {
+    try {
+      const res = await fetch('version.json?t=' + Math.floor(performance.timeOrigin + performance.now()), { cache: 'no-store' });
+      if (!res.ok) return;
+      const { v } = await res.json();
+      if (v > APP_VERSION) {
+        const b = $('btn-update');
+        b.textContent = `🔄 Aggiorna alla versione ${v}`;
+        b.classList.remove('hidden');
+      }
+    } catch (e) { /* offline: pazienza, si aggiornerà alla prossima */ }
+  }
+  checkForUpdate();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && !match.active) checkForUpdate();
+  });
+
+  $('btn-update').addEventListener('click', async () => {
+    Sfx.click();
+    toast('Aggiornamento in corso... ⏳', 4000);
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          // quando il nuovo service worker prende il controllo, ricarica
+          navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+          await reg.update();
+          setTimeout(() => location.reload(true), 4000); // paracadute
+          return;
+        }
+      }
+    } catch (e) { /* si ricarica comunque */ }
+    location.reload();
   });
 
   // ---- installazione come app (PWA) ----
